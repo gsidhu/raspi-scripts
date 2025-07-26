@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pi Radio Controller</title>
+    <!-- Favicons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon/favicon-16x16.png">
+    <link rel="shortcut icon" href="/static/favicon/favicon.ico">
+    <link rel="manifest" href="/static/favicon/site.webmanifest">
+
+    <style>
+        @font-face {
+            font-family: 'Nunito';
+            src: url('/static/fonts/Nunito-VariableFont_wght.ttf') format('truetype');
+            font-weight: 100 1000;
+            font-style: normal;
+        }
+
+        @font-face {
+            font-family: 'Nunito';
+            src: url('/static/fonts/Nunito-Italic-VariableFont_wght.ttf') format('truetype');
+            font-weight: 100 1000;
+            font-style: italic;
+        }
+
+        /* --- CUTE & PINK THEME --- */
+        :root {
+            /* Define the cute color palette */
+            --bg-color: #fdf6f8; /* Very light rosy white */
+            --font-color: #5c5462; /* Soft dark desaturated purple */
+            --primary-color: #ff8fab; /* Main soft pink */
+            --accent-color: #fbc4d4; /* Lighter pastel pink for borders/accents */
+            --green-color: #a8e6cf; /* Soft mint green */
+            --red-color: #ff8a80; /* Soft coral/red */
+            --card-bg: #ffffff; /* Clean white for cards */
+            --white-text: #ffffff;
+        }
+
+        body {
+            /* Use the new cute font */
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--font-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1, h2 {
+            color: var(--primary-color);
+            font-weight: 800;
+            /* A cute dashed border instead of a solid one */
+            border-bottom: 2px dashed var(--accent-color);
+            padding-bottom: 10px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            /* More rounded corners for a softer look */
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            /* Add a soft border and shadow to lift the card off the page */
+            border: 1px solid var(--accent-color);
+            box-shadow: 0 4px 15px rgba(231, 185, 203, 0.4);
+        }
+
+        .status-light {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+            border: 2px solid var(--card-bg); /* Adds a little definition */
+            box-shadow: 0 0 5px currentColor; /* Makes the light glow */
+        }
+        .status-light.green { background-color: var(--green-color); color: var(--green-color); }
+        .status-light.red { background-color: var(--red-color); color: var(--red-color); }
+        
+        #bt-status-text { 
+            font-family: monospace; 
+            font-size: 1.1em;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: var(--white-text);
+            border: none;
+            padding: 10px 20px;
+            /* Pill-shaped buttons */
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 700;
+            font-family: 'Nunito', sans-serif;
+            font-size: 1em;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(255, 143, 171, 0.5);
+        }
+
+        button:hover:not(:disabled) {
+            /* A gentle lift and glow on hover */
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(255, 143, 171, 0.7);
+        }
+
+        button:disabled {
+            background-color: #d1c9d6; /* Softer disabled color */
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .stop-button { 
+            background-color: var(--red-color);
+            box-shadow: 0 2px 5px rgba(255, 138, 128, 0.5);
+         }
+        .stop-button:hover:not(:disabled) {
+            box-shadow: 0 4px 10px rgba(255, 138, 128, 0.7);
+        }
+
+        .station-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 5px;
+            border-bottom: 1px solid var(--accent-color);
+        }
+        .station-item:last-child { border-bottom: none; }
+        
+        .station-info strong {
+            font-size: 1.1em;
+            font-weight: 700;
+        }
+        .station-info p {
+            margin: 0;
+            font-size: 0.9em;
+            color: #b1a9b9; /* Softer gray for description */
+        }
+
+        #now-playing {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--primary-color);
+            color: var(--white-text);
+            padding: 15px;
+            text-align: center;
+            font-weight: 700;
+            font-size: 1.1em;
+            display: none; /* Hidden by default */
+            box-shadow: 0 -3px 15px rgba(231, 185, 203, 0.5); /* Shadow to separate from content */
+            border-top: 3px solid var(--accent-color);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Pi Radio Controller</h1>
+
+        <div class="card">
+            <h2>Bluetooth Status</h2>
+            <p>
+                <span id="bt-status-light" class="status-light red"></span>
+                <span id="bt-status-text">Checking...</span>
+            </p>
+            <button id="bt-connect-btn">Connect Speaker</button>
+        </div>
+
+        <div class="card">
+            <h2>SomaFM Stations</h2>
+            <div id="station-list">
+                <p>Loading stations...</p>
+            </div>
+        </div>
+    </div>
+    
+    <div id="now-playing">
+        Now Playing: <span id="now-playing-station">None</span>
+        <button id="stop-btn" class="stop-button" style="margin-left: 20px;">STOP</button>
+    </div>
+
+<!-- 
+    The script tag MUST be here, at the end of the body.
+    This ensures all HTML elements above have been loaded before the script runs.
+-->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // This event guarantees the DOM is ready, but it's best practice
+    // to keep the script tag at the end of the body anyway.
+
+    const btStatusLight = document.getElementById('bt-status-light');
+    const btStatusText = document.getElementById('bt-status-text');
+    const btConnectBtn = document.getElementById('bt-connect-btn');
+    const stationList = document.getElementById('station-list');
+    const nowPlayingBar = document.getElementById('now-playing');
+    const nowPlayingStation = document.getElementById('now-playing-station');
+    const stopBtn = document.getElementById('stop-btn');
+
+    // --- API Functions ---
+    const api = {
+        getStatus: () => fetch('/api/status').then(res => res.json()),
+        getStations: () => fetch('/api/stations').then(res => res.json()),
+        connectBluetooth: () => fetch('/api/bluetooth/connect', { method: 'POST' }),
+        play: (name, link) => fetch('/api/play', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, link })
+        }),
+        stop: () => fetch('/api/stop', { method: 'POST' })
+    };
+
+    // --- UI Update Functions ---
+    function updateStatusUI(status) {
+        // Update Bluetooth status
+        btStatusText.textContent = `Device (${status.bluetooth_mac}) is ${status.bluetooth_connected ? 'Connected' : 'Disconnected'}`;
+        btStatusLight.className = `status-light ${status.bluetooth_connected ? 'green' : 'red'}`;
+        btConnectBtn.disabled = status.bluetooth_connected;
+
+        // Update Now Playing bar
+        if (status.is_playing && status.station.name) {
+            nowPlayingStation.textContent = status.station.name;
+            nowPlayingBar.style.display = 'block';
+        } else {
+            nowPlayingBar.style.display = 'none';
+        }
+        
+        // This new block correctly updates the state of all play buttons.
+        const playButtons = document.querySelectorAll('.play-btn');
+        playButtons.forEach(button => {
+            // 1. Reset the button to its default state
+            button.disabled = false;
+            button.textContent = 'Play';
+
+            // 2. If a station is playing and it's THIS button's station, update it
+            if (status.is_playing && button.dataset.link === status.station.link) {
+                button.textContent = 'Playing...';
+                button.disabled = true;
+            }
+        });
+    }
+
+    function renderStations(stations) {
+        stationList.innerHTML = ''; // Clear loading message
+        if (Object.keys(stations).length === 0) {
+            stationList.innerHTML = '<p>Could not load stations. Is somafm_stations.json present?</p>';
+            return;
+        }
+
+        for (const [name, data] of Object.entries(stations)) {
+            const item = document.createElement('div');
+            item.className = 'station-item';
+            item.innerHTML = `
+                <div class="station-info">
+                    <strong>${name}</strong>
+                    <p>${data.Description}</p>
+                </div>
+                <button class="play-btn" data-name="${name}" data-link="${data.Link}">Play</button>
+            `;
+            stationList.appendChild(item);
+        }
+    }
+
+    // --- Event Listeners ---
+    stationList.addEventListener('click', async (e) => {
+        if (e.target.classList.contains('play-btn')) {
+            const name = e.target.dataset.name;
+            const link = e.target.dataset.link;
+            e.target.textContent = "Loading...";
+            e.target.disabled = true;
+            await api.play(name, link);
+            await fetchAndUpdateStatus(); 
+        }
+    });
+
+    btConnectBtn.addEventListener('click', async () => {
+        btStatusText.textContent = 'Sending connect command...';
+        btConnectBtn.disabled = true;
+        await api.connectBluetooth();
+        setTimeout(fetchAndUpdateStatus, 3000); 
+    });
+
+    stopBtn.addEventListener('click', async () => {
+        await api.stop();
+        await fetchAndUpdateStatus();
+    });
+
+    // --- Initial Load & Polling ---
+    async function fetchAndUpdateStatus() {
+        try {
+            const status = await api.getStatus();
+            updateStatusUI(status);
+        } catch (error) {
+            console.error("Failed to fetch status:", error);
+            btStatusText.textContent = "Error: Could not contact server.";
+        }
+    }
+
+    async function initialize() {
+        // Now that the script is at the end of the body, these elements will be found.
+        const stations = await api.getStations();
+        renderStations(stations);
+        await fetchAndUpdateStatus();
+        setInterval(fetchAndUpdateStatus, 5000);
+    }
+
+    initialize();
+});
+</script>
+
+</body>
+</html>

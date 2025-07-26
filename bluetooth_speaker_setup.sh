@@ -1,9 +1,13 @@
 #!/bin/bash
 
-# Bluetooth Speaker Setup Script for Raspberry Pi Zero W
-# This script sets up and connects a Bluetooth speaker to Pi Zero W in headless mode
-# Usage: ./bluetooth_speaker_setup.sh [MAC_ADDRESS]
-# If no MAC address is provided, the script will help you discover devices
+# Bluetooth Speaker Manager Script for Raspberry Pi Zero W
+# This script manages Bluetooth speaker connections in headless mode
+# Usage: 
+#   ./bluetooth_speaker_setup.sh --setup                    # Install packages and setup services
+#   ./bluetooth_speaker_setup.sh --connect MAC_ADDRESS      # Connect to device
+#   ./bluetooth_speaker_setup.sh --disconnect MAC_ADDRESS   # Disconnect from device
+#   ./bluetooth_speaker_setup.sh --status [MAC_ADDRESS]     # Show status of device(s)
+#   ./bluetooth_speaker_setup.sh --scan                     # Scan for available devices
 
 set -e  # Exit on any error
 
@@ -31,71 +35,59 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if running as root for system operations
-check_sudo() {
-    if [[ $EUID -eq 0 ]]; then
-        print_warning "Running as root. This is okay for system setup."
+# Validate MAC address format
+validate_mac() {
+    local mac_address="$1"
+    if [[ ! "$mac_address" =~ ^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$ ]]; then
+        print_error "Invalid MAC address format. Expected format: XX:XX:XX:XX:XX:XX"
+        exit 1
     fi
 }
 
-# Install required packages
-install_packages() {
+# Install required packages and setup services
+setup_system() {
+    print_status "Setting up Bluetooth system..."
+    
+    # Check if running with appropriate permissions
+    if [[ $EUID -ne 0 ]]; then
+        print_error "Setup requires root privileges. Please run with sudo."
+        exit 1
+    fi
+    
     print_status "Installing required Bluetooth packages..."
-    sudo apt update -qq
-    sudo apt install -y bluetooth bluez bluez-tools pulseaudio pulseaudio-module-bluetooth alsa-utils
+    apt update -qq
+    apt install -y bluetooth bluez bluez-tools pulseaudio pulseaudio-module-bluetooth alsa-utils
     print_success "Packages installed successfully"
-}
-
-# Enable and start Bluetooth services
-setup_services() {
+    
     print_status "Setting up Bluetooth services..."
     
     # Enable and start Bluetooth service
-    sudo systemctl enable bluetooth
-    sudo systemctl start bluetooth
+    systemctl enable bluetooth
+    systemctl start bluetooth
     
     # Check if Bluetooth service is running
-    if sudo systemctl is-active --quiet bluetooth; then
+    if systemctl is-active --quiet bluetooth; then
         print_success "Bluetooth service is running"
     else
         print_error "Failed to start Bluetooth service"
         exit 1
     fi
     
-    # Start PulseAudio if not running
-    if ! pgrep -x "pulseaudio" > /dev/null; then
-        print_status "Starting PulseAudio..."
-        pulseaudio --start --log-target=syslog
-        sleep 2
-    fi
-    
-    print_success "Services configured successfully"
-}
-
-# Check Bluetooth adapter status
-check_bluetooth() {
-    print_status "Checking Bluetooth adapter..."
-    
+    # Bring up Bluetooth adapter
     if command -v hciconfig > /dev/null; then
-        if hciconfig hci0 | grep -q "UP RUNNING"; then
-            print_success "Bluetooth adapter is active"
-        else
-            print_status "Bringing up Bluetooth adapter..."
-            sudo hciconfig hci0 up
-        fi
-    else
-        print_warning "hciconfig not available, using bluetoothctl to check"
+        hciconfig hci0 up 2>/dev/null || true
     fi
+    
+    print_success "Bluetooth system setup completed"
 }
 
-# Discover Bluetooth devices
-discover_devices() {
+# Scan for available Bluetooth devices
+scan_devices() {
     print_status "Scanning for Bluetooth devices..."
     print_warning "Make sure your Bluetooth speaker is in pairing mode!"
-    echo
     
-    # Use bluetoothctl to scan for devices
-    timeout 30 bluetoothctl <<EOF
+    # Ensure Bluetooth is powered on and start scanning
+    timeout 30 bluetoothctl <<EOF 2>/dev/null || true
 power on
 agent on
 default-agent
@@ -103,30 +95,29 @@ discoverable on
 scan on
 EOF
     
-    print_status "Scan completed. Available devices:"
+    sleep 2
+    
+    print_status "Available devices:"
     bluetoothctl devices
-    echo
 }
 
-# Connect to a specific Bluetooth device
+# Connect to a Bluetooth device
 connect_device() {
     local mac_address="$1"
     
-    if [[ -z "$mac_address" ]]; then
-        print_error "No MAC address provided"
-        return 1
-    fi
-    
-    # Validate MAC address format
-    if [[ ! "$mac_address" =~ ^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$ ]]; then
-        print_error "Invalid MAC address format. Expected format: XX:XX:XX:XX:XX:XX"
-        return 1
-    fi
+    validate_mac "$mac_address"
     
     print_status "Connecting to device: $mac_address"
     
+    # Start PulseAudio if not running
+    if ! pgrep -x "pulseaudio" > /dev/null; then
+        print_status "Starting PulseAudio..."
+        pulseaudio --start --log-target=syslog 2>/dev/null || true
+        sleep 2
+    fi
+    
     # Connect using bluetoothctl
-    bluetoothctl <<EOF
+    bluetoothctl <<EOF 2>/dev/null
 power on
 agent on
 default-agent
@@ -136,16 +127,45 @@ connect $mac_address
 exit
 EOF
     
-    # Wait a moment for connection to establish
+    # Wait for connection to establish
     sleep 3
     
     # Verify connection
-    if bluetoothctl info "$mac_address" | grep -q "Connected: yes"; then
+    if bluetoothctl info "$mac_address" 2>/dev/null | grep -q "Connected: yes"; then
         print_success "Successfully connected to $mac_address"
-        return 0
+        
+        # Configure audio output
+        setup_audio "$mac_address"
+        
+        exit 0
     else
         print_error "Failed to connect to $mac_address"
-        return 1
+        exit 1
+    fi
+}
+
+# Disconnect from a Bluetooth device
+disconnect_device() {
+    local mac_address="$1"
+    
+    validate_mac "$mac_address"
+    
+    print_status "Disconnecting from device: $mac_address"
+    
+    bluetoothctl <<EOF 2>/dev/null
+disconnect $mac_address
+exit
+EOF
+    
+    # Wait a moment and verify disconnection
+    sleep 2
+    
+    if bluetoothctl info "$mac_address" 2>/dev/null | grep -q "Connected: no"; then
+        print_success "Successfully disconnected from $mac_address"
+        exit 0
+    else
+        print_warning "Device may still be connected or connection status unclear"
+        exit 1
     fi
 }
 
@@ -156,145 +176,154 @@ setup_audio() {
     print_status "Configuring audio output..."
     
     # Wait for PulseAudio to detect the Bluetooth sink
-    sleep 5
+    sleep 3
     
     # Convert MAC address format for PulseAudio (replace : with _)
     local pa_mac=$(echo "$mac_address" | tr ':' '_')
     local sink_name="bluez_sink.${pa_mac}.a2dp_sink"
     
-    # List available sinks
-    print_status "Available audio sinks:"
-    pactl list short sinks
-    echo
-    
     # Try to set the Bluetooth speaker as default sink
-    if pactl list short sinks | grep -q "$sink_name"; then
-        pactl set-default-sink "$sink_name"
+    if pactl list short sinks 2>/dev/null | grep -q "$sink_name"; then
+        pactl set-default-sink "$sink_name" 2>/dev/null || true
         print_success "Set Bluetooth speaker as default audio output"
     else
-        print_warning "Bluetooth audio sink not found. You may need to manually configure audio."
-        print_status "Available sinks listed above. Use: pactl set-default-sink SINK_NAME"
+        print_warning "Bluetooth audio sink not immediately available"
+        print_status "Audio may need a moment to initialize"
     fi
 }
 
-# Test audio output
-test_audio() {
-    print_status "Testing audio output..."
-    print_warning "You should hear a test sound. Press Ctrl+C to stop if needed."
-    
-    # Test with speaker-test for 5 seconds
-    timeout 5 speaker-test -t wav -c 2 2>/dev/null || true
-    
-    print_status "Audio test completed"
-}
-
-# Setup auto-reconnect on boot
-setup_autoconnect() {
+# Show status of Bluetooth device(s)
+show_status() {
     local mac_address="$1"
     
-    print_status "Setting up auto-reconnect on boot..."
-    
-    # Create a systemd service for auto-reconnect
-    sudo tee /etc/systemd/system/bluetooth-speaker.service > /dev/null <<EOF
-[Unit]
-Description=Connect Bluetooth Speaker
-After=bluetooth.service
-Requires=bluetooth.service
-
-[Service]
-Type=oneshot
-ExecStartPre=/bin/sleep 10
-ExecStart=/usr/bin/bluetoothctl connect $mac_address
-RemainAfterExit=yes
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-    # Enable the service
-    sudo systemctl daemon-reload
-    sudo systemctl enable bluetooth-speaker.service
-    
-    print_success "Auto-reconnect service created and enabled"
-}
-
-# Main function
-main() {
-    local mac_address="$1"
-    
-    echo "=================================="
-    echo "Bluetooth Speaker Setup for Pi Zero W"
-    echo "=================================="
-    echo
-    
-    check_sudo
-    install_packages
-    setup_services
-    check_bluetooth
-    
-    # If no MAC address provided, help user discover devices
-    if [[ -z "$mac_address" ]]; then
-        discover_devices
-        echo
-        print_warning "Please run the script again with your speaker's MAC address:"
-        print_warning "Example: $0 XX:XX:XX:XX:XX:XX"
-        exit 0
-    fi
-    
-    # Connect to the specified device
-    if connect_device "$mac_address"; then
-        setup_audio "$mac_address"
+    if [[ -n "$mac_address" ]]; then
+        validate_mac "$mac_address"
+        print_status "Status for device: $mac_address"
         
-        # Ask user if they want to test audio
-        echo
-        read -p "Do you want to test audio output? (y/N): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            test_audio
+        # Try to get device info
+        local device_info=$(bluetoothctl info "$mac_address" 2>/dev/null)
+        if [[ -n "$device_info" ]] && echo "$device_info" | grep -q "Device"; then
+            echo "----------------------------------------"
+            echo "$device_info"
+            echo "----------------------------------------"
+        else
+            print_error "Device $mac_address not found or not paired"
+            exit 1
         fi
-        
-        # Ask user if they want auto-reconnect
-        echo
-        read -p "Do you want to setup auto-reconnect on boot? (y/N): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            setup_autoconnect "$mac_address"
-        fi
-        
-        echo
-        print_success "Bluetooth speaker setup completed!"
-        print_status "Your speaker should now be connected and ready to use."
-        echo
-        print_status "Useful commands:"
-        echo "  - Reconnect: bluetoothctl connect $mac_address"
-        echo "  - Disconnect: bluetoothctl disconnect $mac_address"
-        echo "  - Check status: bluetoothctl info $mac_address"
-        echo "  - List audio sinks: pactl list short sinks"
-        echo "  - Set audio output: pactl set-default-sink SINK_NAME"
-        
     else
-        print_error "Setup failed. Please check your speaker is in pairing mode and try again."
-        exit 1
+        print_status "All Bluetooth devices:"
+        echo "----------------------------------------"
+        
+        # Get all devices using the universal 'devices' command
+        local all_devices=$(bluetoothctl devices 2>/dev/null)
+        if [[ -n "$all_devices" ]]; then
+            echo "$all_devices"
+            echo
+            
+            # Check connection status for each device
+            print_status "Connection status:"
+            echo "$all_devices" | while read -r line; do
+                if [[ -n "$line" ]]; then
+                    local mac=$(echo "$line" | awk '{print $2}')
+                    local name=$(echo "$line" | cut -d' ' -f3-)
+                    
+                    if [[ -n "$mac" ]] && [[ "$mac" =~ ^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$ ]]; then
+                        local info=$(bluetoothctl info "$mac" 2>/dev/null)
+                        if echo "$info" | grep -q "Connected: yes"; then
+                            echo "  ✓ $mac ($name) - CONNECTED"
+                        elif echo "$info" | grep -q "Paired: yes"; then
+                            echo "  ○ $mac ($name) - PAIRED"
+                        else
+                            echo "  - $mac ($name) - DISCOVERED"
+                        fi
+                    fi
+                fi
+            done
+        else
+            echo "No devices found"
+        fi
+        echo "----------------------------------------"
+    fi
+    
+    # Show audio sinks if PulseAudio is available
+    if command -v pactl > /dev/null && pgrep -x "pulseaudio" > /dev/null; then
+        print_status "Available audio sinks:"
+        echo "----------------------------------------"
+        pactl list short sinks 2>/dev/null || print_warning "Could not list audio sinks"
+        echo "----------------------------------------"
+        
+        # Show current default sink
+        local default_sink=$(pactl info 2>/dev/null | grep "Default Sink:" | cut -d' ' -f3-)
+        if [[ -n "$default_sink" ]]; then
+            print_status "Current default audio output: $default_sink"
+        fi
     fi
 }
 
-# Script usage information
+# Show usage information
 show_usage() {
-    echo "Usage: $0 [MAC_ADDRESS]"
+    echo "Bluetooth Speaker Manager for Raspberry Pi Zero W"
     echo
-    echo "If no MAC address is provided, the script will scan for available devices."
-    echo "Example: $0 XX:XX:XX:XX:XX:XX"
+    echo "Usage:"
+    echo "  $0 --setup                        Install packages and setup services (requires sudo)"
+    echo "  $0 --connect MAC_ADDRESS          Connect to a Bluetooth device"
+    echo "  $0 --disconnect MAC_ADDRESS       Disconnect from a Bluetooth device"
+    echo "  $0 --status [MAC_ADDRESS]         Show status of device(s)"
+    echo "  $0 --scan                         Scan for available Bluetooth devices"
+    echo "  $0 --help                         Show this help message"
     echo
-    echo "Make sure your Bluetooth speaker is in pairing mode before running this script."
+    echo "Examples:"
+    echo "  $0 --setup"
+    echo "  $0 --scan"
+    echo "  $0 --connect AA:BB:CC:DD:EE:FF"
+    echo "  $0 --status AA:BB:CC:DD:EE:FF"
+    echo "  $0 --disconnect AA:BB:CC:DD:EE:FF"
+    echo
+    echo "Note: Make sure your Bluetooth speaker is in pairing mode before connecting."
 }
 
-# Handle command line arguments
+# Main script logic
 case "${1:-}" in
-    -h|--help)
+    --setup)
+        setup_system
+        ;;
+    --connect)
+        if [[ -z "$2" ]]; then
+            print_error "MAC address required for --connect"
+            echo
+            show_usage
+            exit 1
+        fi
+        connect_device "$2"
+        ;;
+    --disconnect)
+        if [[ -z "$2" ]]; then
+            print_error "MAC address required for --disconnect"
+            echo
+            show_usage
+            exit 1
+        fi
+        disconnect_device "$2"
+        ;;
+    --status)
+        show_status "$2"
+        ;;
+    --scan)
+        scan_devices
+        ;;
+    --help|-h)
         show_usage
-        exit 0
+        ;;
+    "")
+        print_error "No command specified"
+        echo
+        show_usage
+        exit 1
         ;;
     *)
-        main "$1"
+        print_error "Unknown command: $1"
+        echo
+        show_usage
+        exit 1
         ;;
 esac
