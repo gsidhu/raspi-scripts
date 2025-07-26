@@ -12,7 +12,7 @@ load_dotenv()
 # --- Configuration ---
 # !!! IMPORTANT: Replace this with your speaker's MAC address !!!
 BLUETOOTH_DEVICE_MAC = os.getenv("JBL_GO_MAC_ADDRESS")
-STATIONS_FILE = "somafm_stations.json"
+STATIONS_FILE = "fm_stations.json"
 
 # --- Global State ---
 # We use global state to keep track of the music player process.

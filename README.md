@@ -10,3 +10,6 @@
 4. [Connect to USB microphone](./usb_mic_connect.sh)
 5. [Record via USB microphone](./usb_mic_record.sh)
 6. [Assign static IP on local network](./static_ip_address.md)
+
+## Services
+1. [Internet Music Radio Station Server](./music-server/)

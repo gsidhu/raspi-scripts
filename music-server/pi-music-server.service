@@ -1,0 +1,24 @@
+# Create this user service: nano ~/.config/systemd/user/pi-music-server.service
+# Reload the daemon: systemctl --user daemon-reload
+# Enable it: systemctl --user enable pi-music-server.service
+# Start it: systemctl --user start pi-music-server.service
+# Tell systemd to keep the user's session active even if the user is not logged in: sudo loginctl enable-linger thatgurjot
+# Verify linger status: loginctl show-user thatgurjot | grep Linger
+# Reboot the device: sudo reboot
+
+[Unit]
+Description=SomaFM Pi Music Radio Web Server
+After=network-online.target bluetooth.service pulseaudio.service
+BindsTo=pulseaudio.service
+
+[Service]
+Type=simple
+WorkingDirectory=/home/thatgurjot/music-server
+
+ExecStart=/home/thatgurjot/music-server/start-server.sh
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

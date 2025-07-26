@@ -146,6 +146,16 @@
             color: #b1a9b9; /* Softer gray for description */
         }
 
+        .station-info small {
+            background: var(--primary-color);
+            padding: 2px 4px;
+            border-radius: 4px;
+            color: white;
+            font-family: 'Nunito', sans-serif;
+            font-weight: 400;
+            font-size: 0.75em;
+        }
+
         #now-playing {
             position: fixed;
             bottom: 0;
@@ -178,7 +188,7 @@
         </div>
 
         <div class="card">
-            <h2>SomaFM Stations</h2>
+            <h2>FM Stations</h2>
             <div id="station-list">
                 <p>Loading stations...</p>
             </div>
@@ -264,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="station-info">
                     <strong>${name}</strong>
                     <p>${data.Description}</p>
+                    <small>${data.Source}</small>
                 </div>
                 <button class="play-btn" data-name="${name}" data-link="${data.Link}">Play</button>
             `;
