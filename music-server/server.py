@@ -198,6 +198,95 @@ async def stop_playback(request):
     await stop_playback_logic()
     return JSONResponse({"status": "success", "message": "Playback stopped."})
 
+async def set_volume(request):
+    """Sets the volume using amixer."""
+    try:
+        # Extract volume from path parameters
+        volume = int(request.path_params["volume"])
+        
+        # Validate volume range
+        if volume < 0 or volume > 100:
+            return JSONResponse({"error": "Volume must be between 0 and 100", "status": "error"}, status_code=400)
+        
+        # Use amixer to set the volume
+        cmd = ["amixer", "-D", "pulse", "sset", "Master", f"{volume}%"]
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode == 0:
+            print(f"Volume set to {volume}%")
+            return JSONResponse({"status": "success", "message": f"Volume set to {volume}%", "volume": volume})
+        else:
+            error_msg = stderr.decode().strip()
+            print(f"Failed to set volume: return code {process.returncode}, stderr: {error_msg}")
+            return JSONResponse({"error": f"Failed to set volume: {error_msg}", "status": "error"}, status_code=500)
+            
+    except KeyError:
+        return JSONResponse({"error": "Volume parameter missing from URL", "status": "error"}, status_code=400)
+    except ValueError:
+        return JSONResponse({"error": "Invalid volume value - must be an integer", "status": "error"}, status_code=400)
+    except FileNotFoundError:
+        print("amixer command not found")
+        return JSONResponse({"error": "amixer not found", "status": "error"}, status_code=500)
+    except Exception as e:
+        print(f"Error setting volume: {str(e)}")
+        return JSONResponse({"error": str(e), "status": "error"}, status_code=500)
+
+async def current_volume(request):
+    """Gets the current volume level using amixer."""
+    try:
+        cmd = ["amixer", "-D", "pulse", "get", "Master"]
+        process = await asyncio.create_subprocess_exec(
+            *cmd, 
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE  # Add stderr capture
+        )
+        stdout, stderr = await process.communicate()
+        
+        # Check if the command was successful
+        if process.returncode != 0:
+            print(f"amixer command failed with return code {process.returncode}")
+            print(f"stderr: {stderr.decode().strip()}")
+            return JSONResponse({"error": "Failed to get volume", "volume": None}, status_code=500)
+        
+        output = stdout.decode().strip()
+        print(f"amixer output: {output}")  # Debug logging
+        
+        # Parse the output to find the volume level
+        for line in output.splitlines():
+            if "Mono:" in line or "Front Left:" in line:
+                # Look for percentage in brackets like [50%]
+                import re
+                match = re.search(r'\[(\d+)%\]', line)
+                if match:
+                    volume = int(match.group(1))
+                    return JSONResponse({"volume": volume})
+                
+                # Fallback: try the old parsing method
+                parts = line.split()
+                for part in parts:
+                    if part.endswith('%'):
+                        try:
+                            volume = int(part[:-1])
+                            return JSONResponse({"volume": volume})
+                        except ValueError:
+                            continue
+        
+        # If we couldn't parse the volume, return an error
+        print(f"Could not parse volume from amixer output: {output}")
+        return JSONResponse({"error": "Could not parse volume", "volume": None}, status_code=500)
+        
+    except FileNotFoundError:
+        print("amixer command not found")
+        return JSONResponse({"error": "amixer not found", "volume": None}, status_code=500)
+    except Exception as e:
+        print(f"Error getting current volume: {str(e)}")
+        return JSONResponse({"error": str(e), "volume": None}, status_code=500)
+
 async def homepage(request):
     """Serves the main HTML page."""
     try:
@@ -215,6 +304,8 @@ routes = [
     Route("/api/bluetooth/connect", endpoint=connect_bluetooth, methods=["POST"]),
     Route("/api/play", endpoint=play_station, methods=["POST"]),
     Route("/api/stop", endpoint=stop_playback, methods=["POST"]),
+    Route("/api/volume/{volume:int}", endpoint=set_volume, methods=["POST"]),
+    Route("/api/current_volume", endpoint=current_volume, methods=["GET"]),
 ]
 
 app = Starlette(debug=False, routes=routes)

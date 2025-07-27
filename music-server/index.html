@@ -171,10 +171,30 @@
             box-shadow: 0 -3px 15px rgba(231, 185, 203, 0.5); /* Shadow to separate from content */
             border-top: 3px solid var(--accent-color);
         }
+
+        /* --- Volume Control Styles --- */
+        .volume-control {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+        .volume-control button {
+            padding: 8px 15px; /* Smaller buttons for volume */
+            font-size: 0.9em;
+            box-shadow: 0 2px 5px rgba(255, 143, 171, 0.3);
+        }
+        .volume-control button:hover:not(:disabled) {
+            box-shadow: 0 4px 10px rgba(255, 143, 171, 0.5);
+        }
+        #current-volume-display {
+            font-weight: 700;
+            font-size: 1.2em;
+            color: var(--primary-color);
+        }
     </style>
 </head>
 <body>
-
     <div class="container">
         <h1>Pi Radio Controller</h1>
 
@@ -185,6 +205,16 @@
                 <span id="bt-status-text">Checking...</span>
             </p>
             <button id="bt-connect-btn">Connect Speaker</button>
+        </div>
+
+        <!-- Volume Control Card -->
+        <div class="card">
+            <h2>Volume Control</h2>
+            <div class="volume-control">
+                <button id="volume-down-btn" class="volume-btn">-10</button>
+                <span id="current-volume-display">Volume: --%</span>
+                <button id="volume-up-btn" class="volume-btn">+10</button>
+            </div>
         </div>
 
         <div class="card">
@@ -217,6 +247,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const nowPlayingStation = document.getElementById('now-playing-station');
     const stopBtn = document.getElementById('stop-btn');
 
+    // --- New Volume Control Elements ---
+    const volumeDownBtn = document.getElementById('volume-down-btn');
+    const volumeUpBtn = document.getElementById('volume-up-btn');
+    const currentVolumeDisplay = document.getElementById('current-volume-display');
+
     // --- API Functions ---
     const api = {
         getStatus: () => fetch('/api/status').then(res => res.json()),
@@ -227,7 +262,10 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name, link })
         }),
-        stop: () => fetch('/api/stop', { method: 'POST' })
+        stop: () => fetch('/api/stop', { method: 'POST' }),
+        // New API functions for volume
+        getVolume: () => fetch('/api/current_volume').then(res => res.json()),
+        setVolume: (volume) => fetch(`/api/volume/${volume}`, { method: 'POST' })
     };
 
     // --- UI Update Functions ---
@@ -245,19 +283,25 @@ document.addEventListener('DOMContentLoaded', () => {
             nowPlayingBar.style.display = 'none';
         }
         
-        // This new block correctly updates the state of all play buttons.
+        // Update play buttons state
         const playButtons = document.querySelectorAll('.play-btn');
         playButtons.forEach(button => {
-            // 1. Reset the button to its default state
             button.disabled = false;
             button.textContent = 'Play';
-
-            // 2. If a station is playing and it's THIS button's station, update it
             if (status.is_playing && button.dataset.link === status.station.link) {
                 button.textContent = 'Playing...';
                 button.disabled = true;
             }
         });
+    }
+
+    // Function to update the volume display
+    function updateVolumeDisplay(volume) {
+        if (volume !== null && volume !== undefined) {
+            currentVolumeDisplay.textContent = `Volume: ${volume}%`;
+        } else {
+            currentVolumeDisplay.textContent = 'Volume: --%';
+        }
     }
 
     function renderStations(stations) {
@@ -306,19 +350,45 @@ document.addEventListener('DOMContentLoaded', () => {
         await fetchAndUpdateStatus();
     });
 
+    // --- Volume Control Event Listeners ---
+    if (volumeDownBtn && volumeUpBtn && currentVolumeDisplay) {
+        volumeDownBtn.addEventListener('click', async () => {
+            let currentVolume = parseInt(currentVolumeDisplay.textContent.replace('Volume: ', '').replace('%', ''), 10);
+            if (isNaN(currentVolume)) { // If display is '--%' or invalid
+                currentVolume = 50; // Default to a mid-range value if unknown
+            }
+            let newVolume = Math.max(0, currentVolume - 10);
+            await api.setVolume(newVolume);
+            await fetchAndUpdateStatus(); // Re-fetch status to update volume display
+        });
+
+        volumeUpBtn.addEventListener('click', async () => {
+            let currentVolume = parseInt(currentVolumeDisplay.textContent.replace('Volume: ', '').replace('%', ''), 10);
+            if (isNaN(currentVolume)) { // If display is '--%' or invalid
+                currentVolume = 50; // Default to a mid-range value if unknown
+            }
+            let newVolume = Math.min(100, currentVolume + 10);
+            await api.setVolume(newVolume);
+            await fetchAndUpdateStatus(); // Re-fetch status to update volume display
+        });
+    }
+
     // --- Initial Load & Polling ---
     async function fetchAndUpdateStatus() {
         try {
             const status = await api.getStatus();
             updateStatusUI(status);
+            // Also fetch and update volume status
+            const volumeStatus = await api.getVolume();
+            updateVolumeDisplay(volumeStatus.volume); // Assuming API returns { volume: X }
         } catch (error) {
             console.error("Failed to fetch status:", error);
             btStatusText.textContent = "Error: Could not contact server.";
+            updateVolumeDisplay(null); // Clear volume display on error
         }
     }
 
     async function initialize() {
-        // Now that the script is at the end of the body, these elements will be found.
         const stations = await api.getStations();
         renderStations(stations);
         await fetchAndUpdateStatus();
