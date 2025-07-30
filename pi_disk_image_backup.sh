@@ -57,3 +57,10 @@ pishrink /Users/thatgurjot/pi_zero_fresh_backup_250725.img
 
 # Restore the image using Official Raspberry Pi Imager or Balena Etcher.
 ## Select the 'Custom Image (.img)' option for your device.
+
+## If you shrunk the image before, you'll have to expand it after restoring
+# 1. SSH into the Pi and run the config tool: sudo raspi-config
+# 2. Navigate to: Advanced Options → Expand Filesystem
+# 3. After it completes, reboot: sudo reboot
+# 4. Once rebooted, run: df -h
+# You should now see the /dev/mmcblk0p2 size closer to 30GB.
