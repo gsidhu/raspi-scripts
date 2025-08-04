@@ -1,7 +1,7 @@
-# Create this user service: nano ~/.config/systemd/user/pi-music-server.service
+# Create this user service: nano ~/.config/systemd/user/pi-radio-server.service
 # Reload the daemon: systemctl --user daemon-reload
-# Enable it: systemctl --user enable pi-music-server.service
-# Start it: systemctl --user start pi-music-server.service
+# Enable it: systemctl --user enable pi-radio-server.service
+# Start it: systemctl --user start pi-radio-server.service
 
 # Tell systemd to keep the user's session active even if the user is not logged in: sudo loginctl enable-linger thatgurjot
 # Verify linger status: loginctl show-user thatgurjot | grep Linger
@@ -14,9 +14,9 @@ BindsTo=pulseaudio.service
 
 [Service]
 Type=simple
-WorkingDirectory=/home/thatgurjot/music-server
+WorkingDirectory=/home/thatgurjot/radio-server
 
-ExecStart=/home/thatgurjot/music-server/start-server.sh
+ExecStart=/home/thatgurjot/radio-server/start-server.sh
 
 Restart=on-failure
 RestartSec=5

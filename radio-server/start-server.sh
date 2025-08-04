@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -x # enable debug output
+
 # Make sure to chmod +x start-server.sh
 
 # This script sets up the necessary environment for services
@@ -16,4 +18,4 @@ done
 
 # Now, execute the actual uvicorn server
 # The full path to the python interpreter in the venv is used for robustness
-/home/thatgurjot/music-server/venv/bin/uvicorn server:app --host 0.0.0.0 --port 8000
+/home/thatgurjot/radio-server/venv/bin/uvicorn server:app --host 0.0.0.0 --port 8000 >> pi-radio-server.log 2>&1
