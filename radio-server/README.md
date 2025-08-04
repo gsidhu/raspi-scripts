@@ -1,6 +1,8 @@
 # Pi Music Server
 
-A web-based music player designed to run on a Raspberry Pi, allowing you to stream internet radio stations and control playback through a simple web interface. It also includes Bluetooth speaker integration for wireless audio output.
+A web-app to stream internet radio stations.
+
+Designed to run on a Raspberry Pi. Includes Bluetooth speaker integration for wireless audio output.
 
 ## Features
 
@@ -65,16 +67,25 @@ sudo apt update
 sudo apt install ffmpeg
 ```
 
+**User Groups**
+
+Ensure your user is part of the `audio` and `bluetooth` groups to access audio devices and Bluetooth functionality:
+```bash
+sudo usermod -aG audio,bluetooth thatgurjot # Replace 'thatgurjot' with your actual username
+# Verify the groups with:
+groups thatgurjot
+```
+
 ### 2. Clone the Repository
 
-For this guide, we'll assume it's cloned into `/home/thatgurjot/music-server/`.
+For this guide, we'll assume it's cloned into `/home/thatgurjot/radio-server/`.
 
 SSH into your Pi and run –
 
 ```bash
 git clone https://github.com/gsidhu/raspi-scripts.git
-mv raspi-scripts/music-server /home/thatgurjot/music-server # Move the music-server directory to the expected location
-cd /home/thatgurjot/music-server
+mv raspi-scripts/radio-server /home/thatgurjot/radio-server # Move the radio-server directory to the expected location
+cd /home/thatgurjot/radio-server
 ```
 
 ### 3. Set Up Python Environment and Install Dependencies
@@ -115,7 +126,7 @@ You need to provide your Bluetooth speaker's MAC address to the server.
     # !!! IMPORTANT: Replace this with your speaker's MAC address !!!
     BLUETOOTH_DEVICE_MAC = "YOUR_SPEAKER_MAC_ADDRESS" # e.g., "A1:B2:C3:D4:E5:F6"
     ```
-    Alternatively, you can create a `.env` file in the `music-server/` directory with the line:
+    Alternatively, you can create a `.env` file in the `radio-server/` directory with the line:
     ```
     JBL_GO_MAC_ADDRESS=YOUR_SPEAKER_MAC_ADDRESS
     ```
@@ -123,11 +134,11 @@ You need to provide your Bluetooth speaker's MAC address to the server.
 
 ### 5. Configure Systemd Service
 
-The `pi-music-server.service` file is provided to run the server as a background service.
+The `pi-radio-server.service` file is provided to run the server as a background service.
 
 1.  **Copy the service file**:
     ```bash
-    sudo cp /home/thatgurjot/music-server/pi-music-server.service /etc/systemd/user/pi-music-server.service
+    sudo cp /home/thatgurjot/radio-server/pi-radio-server.service ~/.config/systemd/user/pi-radio-server.service
     ```
     *Note: If you are not running as the `thatgurjot` user, adjust the `WorkingDirectory` and `ExecStart` paths in the `.service` file accordingly.*
 
@@ -145,13 +156,13 @@ The `pi-music-server.service` file is provided to run the server as a background
 systemctl --user daemon-reload
 
 # Enable the service to start on boot
-systemctl --user enable pi-music-server.service
+systemctl --user enable pi-radio-server.service
 
 # Start the service immediately
-systemctl --user start pi-music-server.service
+systemctl --user start pi-radio-server.service
 
 # Check the status of the service
-systemctl --user status pi-music-server.service
+systemctl --user status pi-radio-server.service
 ```
 
 ### 7. Access the Web Interface
@@ -172,9 +183,19 @@ You can find your Raspberry Pi's IP address using `hostname -I` on the Pi.
 
 ## Troubleshooting
 
-*   **No Audio**: Ensure your Bluetooth speaker is connected and selected as the default audio output. Check PulseAudio configuration if necessary.
-*   **Bluetooth Connection Issues**: Verify the MAC address in `server.py` is correct. Ensure your speaker is in pairing mode when attempting to connect. Check `bluetoothctl` for errors.
-*   **Web Interface Not Loading**: Make sure the `uvicorn` server is running (`systemctl --user status pi-music-server.service`). Check the Raspberry Pi's IP address and ensure your client device is on the same network.
-*   **`amixer` errors**: Ensure `pulseaudio-utils` is installed.
+* **No Audio**: Ensure your Bluetooth speaker is connected and selected as the default audio output. Check PulseAudio configuration if necessary.
+* **Bluetooth Connection Issues**: Verify the MAC address in `server.py` is correct. Ensure your speaker is in pairing mode when attempting to connect. Check `bluetoothctl` for errors.
+* **Web Interface Not Loading**: Make sure the `uvicorn` server is running (`systemctl --user status pi-radio-server.service`). Check the Raspberry Pi's IP address and ensure your client device is on the same network.
+* **`amixer` errors**: Ensure `pulseaudio-utils` is installed.
+* **Permissions issues or `(code=exited, status=203/EXEC)` errors**: 
+    * Ensure the service file has the correct paths and permissions. The `ExecStart` path should point to the Python interpreter in your virtual environment, and the working directory should be set correctly.
+    * Make sure the `start-server.sh` script is executable (`chmod +x start-server.sh`).
+    * Make sure the user running the service has permission to access the audio devices. You can check this by running `groups thatgurjot` and ensuring `audio` and `bluetooth` are listed.
+    * Make sure `linger` is enabled for your user. You can check this with `loginctl show-user thatgurjot` and looking for `Linger=yes`.
 
-For everything else: Ask Claude, ChatGPT or Gemini!
+View logs for more details:
+```bash
+journalctl --user-unit pi-radio-server.service
+```
+
+For everything else: Ask your friendly local LLM!

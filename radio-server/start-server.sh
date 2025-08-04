@@ -18,4 +18,4 @@ done
 
 # Now, execute the actual uvicorn server
 # The full path to the python interpreter in the venv is used for robustness
-/home/thatgurjot/radio-server/venv/bin/uvicorn server:app --host 0.0.0.0 --port 8000 >> pi-radio-server.log 2>&1
+/home/thatgurjot/radio-server/venv/bin/uvicorn server:app --host 0.0.0.0 --port 8000
