@@ -8,7 +8,7 @@
 # Reboot the device: sudo reboot
 
 [Unit]
-Description=Pi FM Music Radio Web Server
+Description=Pi Music Radio Web Server
 After=network-online.target bluetooth.service pulseaudio.service
 BindsTo=pulseaudio.service
 

@@ -12,24 +12,58 @@ A web-based music player designed to run on a Raspberry Pi, allowing you to stre
 
 ## Setup Instructions
 
-This guide assumes you have a Raspberry Pi with Raspberry Pi OS (or a similar Debian-based distribution) installed and configured with network access.
+This guide assumes you have a Raspberry Pi with Raspberry Pi OS (or a similar Debian-based distribution) installed and configured with network access. Give it a [static IP address](../static_ip_address.md) if you want to access it reliably.
 
 ### 1. Prerequisites
 
-*   **Raspberry Pi**: Any model capable of running Raspberry Pi OS.
-*   **Raspberry Pi OS**: Installed and updated.
-*   **Python 3**: Usually pre-installed.
-*   **pip**: Python package installer.
-*   **PulseAudio**: For audio output.
-*   **Bluetooth**: Enabled and functional on your Raspberry Pi.
-*   **`mpg123`**: A command-line MP3 player. Install it using:
-    ```bash
-    sudo apt update
-    sudo apt install mpg123 pulseaudio-utils -y
-    ```
-*   **`uvicorn`**: ASGI server for the web application.
-*   **`python-dotenv`**: For managing environment variables.
-*   **`starlette`**: A lightweight web framework for Python.
+**PulseAudio**
+
+For audio output. Install and set it up with:
+```bash
+sudo apt update
+sudo apt install pulseaudio pulseaudio-module-bluetooth pavucontrol bluez -y
+pulseaudio --start
+echo autospawn = yes >> ~/.config/pulse/client.conf # Creates the config file if it doesn't exist
+sudo reboot # Important! Reboot to apply changes
+```
+
+**Bluetooth**
+
+> [!NOTE]
+> You have to connect your Bluetooth speaker to the Raspberry Pi manually the first time. After that, the server will handle reconnections automatically.
+
+Make sure your speaker is in pairing mode, then run the following commands to connect it to your Pi:
+```bash
+bluetoothctl
+# Inside bluetoothctl, run the following commands:
+power on
+agent on
+default-agent
+scan on
+# Wait until your speaker shows up, then:
+pair XX:XX:XX:XX:XX:XX
+connect XX:XX:XX:XX:XX:XX
+trust XX:XX:XX:XX:XX:XX
+# (Replace XX:XX:XX:XX:XX:XX with your speaker’s MAC address.)
+```
+You should see “Connection successful”. Your speaker should likely give a confirmation sound as well.
+Type `exit` to leave bluetoothctl.
+
+**`mpg123`**
+
+A command-line MP3 player. Install it using:
+```bash
+sudo apt update
+sudo apt install mpg123
+```
+
+**`ffmpeg`**
+
+`mpg123` can only handle MP3 streams. For AAC, DASH or other modern formats, you need `ffmpeg`. Install it with:
+```bash
+sudo apt update
+sudo apt install ffmpeg
+```
 
 ### 2. Clone the Repository
 

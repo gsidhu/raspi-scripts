@@ -238,5 +238,40 @@
     "Description": "The world's greatest music, from the Baroque to the present day.",
     "Link": "http://ice-the.musicradio.com/ClassicFMMP3",
     "Source": "Classic FM"
+  },
+  "BBC Asian Network": {
+    "Description": "The home of Asian music, culture and stories from across the UK and around the world.",
+    "Link": "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/dash/nonuk/pc_hd_abr_v2/aks/bbc_asian_network.mpd",
+    "Source": "BBC"
+  },
+  "BBC Radio 6 Music": {
+    "Description": "The home of alternative music, featuring a mix of classic and contemporary tracks.",
+    "Link": "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/dash/nonuk/pc_hd_abr_v2/aks/bbc_6music.mpd",
+    "Source": "BBC"
+  },
+  "BBC Radio 1XTRA": {
+    "Description": "The home of hip-hop, R&B, and UK rap, with a mix of classic and contemporary tracks.",
+    "Link": "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/dash/nonuk/pc_hd_abr_v2/aks/bbc_1xtra.mpd",
+    "Source": "BBC"
+  },
+  "BBC Radio 1": {
+    "Description": "The home of the UK's best new music, with a mix of classic and contemporary tracks.",
+    "Link": "https://a.files.bbci.co.uk/ms6/live/3441A116-B12E-4D2F-ACA8-C1984642FA4B/audio/simulcast/dash/nonuk/pc_hd_abr_v2/aks/bbc_radio_one.mpd",
+    "Source": "BBC"
+  },
+  "J-Pop Sakura Natsukashii": {
+    "Description": "Classic Japanese pop from the 60s to 00s.",
+    "Link": "https://cast1.torontocast.com:2170/;",
+    "Source": "J-Pop Sakura Natsukashii"
+  },
+  "Lo-Fi Radio": {
+    "Description": "A mix of lo-fi hip hop and chillhop.",
+    "Link": "https://stream.zeno.fm/5mt26kunhm8uv",
+    "Source": "Zeno"
+  },
+  "Hindi Lo-Fi Radio": {
+    "Description": "A mix of Hindi lo-fi hip hop and chillhop.",
+    "Link": "https://stream.zeno.fm/x87qpwpr2p8uv",
+    "Source": "Zeno"
   }
 }

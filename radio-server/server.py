@@ -183,7 +183,10 @@ async def play_station(request):
     print(f"Starting playback for: {station_name}")
     
     # mpg123 -q (quiet) is essential to avoid verbose output
-    command = ["mpg123", "-q", "-o", "pulse", station_link]
+    if "mp3" in station_link:
+        command = ["mpg123", "-q", "-o", "pulse", station_link]
+    else:
+        command = ["ffplay", "-nodisp", "-autoexit", station_link]
     
     print(f"Executing play command: {' '.join(command)}")
     
