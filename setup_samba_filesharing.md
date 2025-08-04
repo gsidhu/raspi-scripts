@@ -76,13 +76,13 @@ sudo umount /mnt/hdd2
 sudo nano /etc/fstab
 # Add these lines at the end of the file
 ## If it's an NTFS drive -
-UUID=<YOUR_DRIVE_UUID_HERE> /mnt/hdd1 ntfs-3g defaults,uid=<YOUR_UID>,gid=<YOUR_GID>,umask=002,fmask=113 0 0
+UUID=<YOUR_DRIVE_UUID_HERE> /mnt/hdd1 ntfs-3g defaults,nofail,x-systemd.device-timeout=10,uid=<YOUR_UID>,gid=<YOUR_GID>,umask=002 0 0
 ## If it's an exfat drive -
-UUID=<YOUR_DRIVE_UUID_HERE> /mnt/hdd2 exfat defaults,uid=<YOUR_UID>,gid=<YOUR_GID>,umask=002,dmask=002 0 0
+UUID=<YOUR_DRIVE_UUID_HERE> /mnt/hdd2 exfat defaults,nofail,x-systemd.device-timeout=10,uid=<YOUR_UID>,gid=<YOUR_GID>,umask=002 0 0
 ## If it's an ext4 drive -
-UUID=<YOUR_DRIVE_UUID_HERE> /mnt/hdd3 ext4 defaults,uid=<YOUR_UID>,gid=<YOUR_GID>,umask=002,dmask=002 0 0
+UUID=<YOUR_DRIVE_UUID_HERE> /mnt/hdd3 ext4 defaults,nofail,x-systemd.device-timeout=10,uid=<YOUR_UID>,gid=<YOUR_GID>,umask=002 0 0
 ## Example –:
-UUID=687F-4665 /mnt/hdd3 ext4 defaults,uid=1000,gid=1000,umask=002,dmask=002 0 0
+UUID=687F-4665 /mnt/hdd3 ext4 defaults,nofail,x-systemd.device-timeout=10,uid=1000,gid=1000,umask=002 0 0
 ```
 5. Mount the drives again:
 ```bash
@@ -91,6 +91,9 @@ sudo systemctl daemon-reload
 # Mount all filesystems defined in fstab
 sudo mount -a
 ```
+
+> [!NOTE]
+> Adding `nofail,x-systemd.device-timeout=10` ensures that the system will not fail to boot if the drives are not connected, and it will wait for up to 10 seconds for the drives to be available. If you miss this step and the drives are not connected, your Pi will likely not boot properly.
 
 6. Verify the drives are mounted correctly:
 ```bash

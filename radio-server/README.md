@@ -76,6 +76,21 @@ sudo usermod -aG audio,bluetooth thatgurjot # Replace 'thatgurjot' with your act
 groups thatgurjot
 ```
 
+**Linger User Sessions**
+
+Tell systemd to keep the user's session active even if the user is not logged in:
+```bash
+sudo loginctl enable-linger thatgurjot
+```
+# Verify linger status:
+```bash
+loginctl show-user thatgurjot | grep Linger
+```
+# Reboot the device:
+```bash
+sudo reboot
+```
+
 ### 2. Clone the Repository
 
 For this guide, we'll assume it's cloned into `/home/thatgurjot/radio-server/`.
