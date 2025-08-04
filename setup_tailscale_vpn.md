@@ -103,3 +103,13 @@ server {
     }
 }
 ```
+
+> [!NOTE]
+> Once you add the SSL certificates to a service on your Pi, you will no longer be able to access it over HTTP. The `<HOSTNAME>.local` URLs won't work either because Tailscale's MagicDNS is now handling things.
+>
+> You have two options here:
+>
+> 1. **Visit the Tailscale domain of your Pi**, which will look something like `https://raspberrypi.tailnet.ts.net:8000`. This will only work if the device you are accessing from is connected to your Tailscale network as well. This is the recommended way to access your Pi's services over HTTPS.
+> 2. **Use the Tailscale hostname of your device**. So if previously you visited `http://raspberrypi.local:8000`, you will now access it at `https://raspberrypi:8000`. This will only work if the device you are accessing from is connected to your Tailscale network as well. You will have to go through the 'Accept the risk and continue' process in your browser the first time.
+>
+> From a device that is not connected to your Tailscale network, you can continue to use the `.local` hostname as before. Of course, you will have to be connected to your router's local network for that to work. And it will be over HTTP.
