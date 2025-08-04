@@ -192,6 +192,16 @@
             font-size: 1.2em;
             color: var(--primary-color);
         }
+
+        #category-buttons {
+            gap: 0.5em;
+            display: flex;
+            flex-wrap: wrap;
+        }
+
+        .category-btn {
+            padding: 5px 10px;
+        }
     </style>
 </head>
 <body>
@@ -218,7 +228,9 @@
         </div>
 
         <div class="card">
-            <h2>FM Stations</h2>
+            <h2 id="radio-station-header">Radio Stations</h2>
+            <!-- Category buttons will be added here -->
+            <div id="category-buttons"></div>
             <div id="station-list">
                 <p>Loading stations...</p>
             </div>
@@ -243,6 +255,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const btStatusText = document.getElementById('bt-status-text');
     const btConnectBtn = document.getElementById('bt-connect-btn');
     const stationList = document.getElementById('station-list');
+    const radioStationHeader = document.getElementById('radio-station-header');
+    const categoryButtonsContainer = document.getElementById('category-buttons'); // Get the new container
     const nowPlayingBar = document.getElementById('now-playing');
     const nowPlayingStation = document.getElementById('now-playing-station');
     const stopBtn = document.getElementById('stop-btn');
@@ -263,7 +277,6 @@ document.addEventListener('DOMContentLoaded', () => {
             body: JSON.stringify({ name, link })
         }),
         stop: () => fetch('/api/stop', { method: 'POST' }),
-        // New API functions for volume
         getVolume: () => fetch('/api/current_volume').then(res => res.json()),
         setVolume: (volume) => fetch(`/api/volume/${volume}`, { method: 'POST' })
     };
@@ -304,26 +317,86 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- Modified renderStations function ---
+    let allStationsData = {}; // Store all stations data globally within this scope
+
     function renderStations(stations) {
-        stationList.innerHTML = ''; // Clear loading message
-        if (Object.keys(stations).length === 0) {
-            stationList.innerHTML = '<p>Could not load stations. Is somafm_stations.json present?</p>';
-            return;
+        allStationsData = stations; // Store stations for filtering
+        const stationsByCategory = {};
+        for (const [name, data] of Object.entries(stations)) {
+            const source = data.Source;
+            if (!stationsByCategory[source]) {
+                stationsByCategory[source] = [];
+            }
+            stationsByCategory[source].push({ name, data });
         }
 
-        for (const [name, data] of Object.entries(stations)) {
-            const item = document.createElement('div');
-            item.className = 'station-item';
-            item.innerHTML = `
-                <div class="station-info">
-                    <strong>${name}</strong>
-                    <p>${data.Description}</p>
-                    <small>${data.Source}</small>
-                </div>
-                <button class="play-btn" data-name="${name}" data-link="${data.Link}">Play</button>
-            `;
-            stationList.appendChild(item);
+        // Clear existing buttons and station list
+        categoryButtonsContainer.innerHTML = '';
+        stationList.innerHTML = '';
+
+        // Add "All" button
+        const allButton = document.createElement('button');
+        allButton.textContent = 'All';
+        allButton.classList.add('category-btn');
+        allButton.dataset.category = 'all';
+        categoryButtonsContainer.appendChild(allButton);
+
+        // Add buttons for each category
+        for (const category in stationsByCategory) {
+            const button = document.createElement('button');
+            button.textContent = category;
+            button.classList.add('category-btn');
+            button.dataset.category = category;
+            categoryButtonsContainer.appendChild(button);
         }
+
+        // Function to display stations based on selected category
+        function displayStations(categoryFilter = 'All') {
+            stationList.innerHTML = ''; // Clear current list
+
+            let stationsToDisplay = [];
+            if (categoryFilter === 'All') {
+                // Flatten all stations if 'All' is selected
+                for (const category in stationsByCategory) {
+                    stationsToDisplay = stationsToDisplay.concat(stationsByCategory[category]);
+                }
+            } else {
+                stationsToDisplay = stationsByCategory[categoryFilter] || [];
+            }
+
+            if (stationsToDisplay.length === 0) {
+                stationList.innerHTML = '<p>No stations found for this category.</p>';
+                return;
+            }
+
+            stationsToDisplay.forEach(({ name, data }) => {
+                const item = document.createElement('div');
+                item.className = 'station-item';
+                item.innerHTML = `
+                    <div class="station-info">
+                        <strong>${name}</strong>
+                        <p>${data.Description}</p>
+                        <small>${data.Source}</small>
+                    </div>
+                    <button class="play-btn" data-name="${name}" data-link="${data.Link}">Play</button>
+                `;
+                stationList.appendChild(item);
+            });
+
+            radioStationHeader.innerText = categoryFilter + " Radio Stations"
+        }
+
+        // Initial display of all stations
+        displayStations();
+
+        // Add event listeners for category buttons
+        categoryButtonsContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('category-btn')) {
+                const selectedCategory = e.target.dataset.category;
+                displayStations(selectedCategory);
+            }
+        });
     }
 
     // --- Event Listeners ---
