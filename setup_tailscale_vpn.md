@@ -77,6 +77,12 @@ mv <CERTIFICATE_FILENAME>.crt ~/.config/ssl/
 mv <KEY_FILENAME>.key ~/.config/ssl/
 ```
 
+> [!CAUTION]
+> Keep the certificate and key files secure. They are sensitive files that should not be shared or exposed to the public Internet!
+
+> [!WARNING]
+> Once you have added the SSL certificates to your services, you will always have to access them over HTTPS, even when you are on your local network.
+
 ### Serving a FastAPI app over HTTPS
 
 Simply edit the `uvicorn` command to include the certificate and key files:
@@ -105,11 +111,20 @@ server {
 ```
 
 > [!NOTE]
-> Once you add the SSL certificates to a service on your Pi, you will no longer be able to access it over HTTP. The `<HOSTNAME>.local` URLs won't work either because Tailscale's MagicDNS is now handling things.
+> Once you add the SSL certificates to a service on your Pi, you will no longer be able to access it over HTTP.
 >
-> You have two options here:
+> You have a few different ways to connect to your services depending on whether the device you are accessing from is connected to your Tailscale network or not.
 >
-> 1. **Visit the Tailscale domain of your Pi**, which will look something like `https://raspberrypi.tailnet.ts.net:8000`. This will only work if the device you are accessing from is connected to your Tailscale network as well. This is the recommended way to access your Pi's services over HTTPS.
-> 2. **Use the Tailscale hostname of your device**. So if previously you visited `http://raspberrypi.local:8000`, you will now access it at `https://raspberrypi:8000`. This will only work if the device you are accessing from is connected to your Tailscale network as well. You will have to go through the 'Accept the risk and continue' process in your browser the first time.
+> **If the device is connected to Tailscale, you have two options:**
 >
-> From a device that is not connected to your Tailscale network, you can continue to use the `.local` hostname as before. Of course, you will have to be connected to your router's local network for that to work. And it will be over HTTP.
+> 1. (Recommended) **Visit the Tailscale domain of your Pi** which will look something like `https://raspberrypi.tailnet.ts.net:8000`. It's like visiting any other website. Neat.
+> 2. (Alternative) **Visit the Tailscale hostname of your Pi** which will look something like `https://raspberrypi:8000`. You will have to go through the 'Accept the risk and continue' process in your browser the first time because the certificate is self-signed.
+>
+> **If the device is NOT connected to Tailscale:** 
+> 
+> Naturally, this device will have to be connected to your router's local network for this to work. You can't magically hack your way into your Pi's services. 
+> Use the `.local` hostname as before but this time over HTTPS. Go through the 'Accept the risk and continue' process in your browser the first time.
+
+To put it another way:
+* The Tailscale hostname and domain will only work when you are connected to Tailscale regardless of which (Internet) network you are on.
+* The `.local` hostname will only work when you are on your local network and not connected to Tailscale.
