@@ -98,15 +98,16 @@ async def monitor_mpg123_stdout_and_stderr() -> None:
                 line_str = line.decode('utf-8', errors='ignore').strip()
                 
                 # Print all output for debugging
-                if line_str:
-                    print(f"[{stream_name}] {line_str}")
+                # if line_str:
+                #     print(f"[{stream_name}] {line_str}")
                 
                 # Look for ICY-META lines
                 if line_str.startswith('ICY-META:') and 'StreamTitle=' in line_str:
                     print(f"Found ICY-META in {stream_name}: {line_str}")
                     
                     title, artist = extract_icy_meta(line_str)
-                    if title or artist:
+                    
+                    if (title or artist) and (title != stream_name or artist != stream_name):
                         # Update global track info
                         current_track_info = {
                             "title": title,
@@ -164,8 +165,8 @@ async def scrobbling_worker(station_name) -> None:
             except Exception as e:
                 print(f"Error during scrobbling: {e}")
             
-            # Wait 30 seconds before next scrobble attempt
-            await asyncio.sleep(30)
+            # Wait 60 seconds before next scrobble attempt
+            await asyncio.sleep(60)
             
     except asyncio.CancelledError:
         print(f"Scrobbling worker cancelled for station: {station_name}")
@@ -221,9 +222,9 @@ async def get_status(request):
         stderr_decoded = stderr.decode().strip()
 
         # Log script output for debugging
-        print(f"Bluetooth status script stdout:\n{stdout_decoded}")
-        if stderr_decoded:
-            print(f"Bluetooth status script stderr:\n{stderr_decoded}")
+        # print(f"Bluetooth status script stdout:\n{stdout_decoded}")
+        # if stderr_decoded:
+        #     print(f"Bluetooth status script stderr:\n{stderr_decoded}")
 
         # Check the return code of the script first
         if proc.returncode == 0:
@@ -427,7 +428,7 @@ async def current_volume(request):
             return JSONResponse({"error": "Failed to get volume", "volume": None}, status_code=500)
         
         output = stdout.decode().strip()
-        print(f"amixer output: {output}")  # Debug logging
+        # print(f"amixer output: {output}")  # Debug logging
         
         # Parse the output to find the volume level
         for line in output.splitlines():

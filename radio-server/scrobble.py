@@ -44,7 +44,7 @@ def load_stations():
         print(f"ERROR: {STATIONS_FILE} not found.")
         return {}
 
-def create_track_data_string(artist: str, track_title: str, album: str) -> str:
+def create_track_data_string(track_title: str, artist: str, album: str) -> str:
     """
     Creates a URL-encoded string for a track, artist, album, and a current timestamp.
 
@@ -183,8 +183,8 @@ def get_last_scrobbled_track_in_db(conn: Connection):
 def check_and_make_scrobble_request(title: str, artist: str, album: str|None, station_name: str, conn: Connection):
   # Check against last track
   last_scrobbled_track = get_last_scrobbled_track_in_db(conn)
-  print(last_scrobbled_track)
-  if last_scrobbled_track is not None and title == last_scrobbled_track[0] and artist == last_scrobbled_track[1] and album == last_scrobbled_track[2]:
+  # print(last_scrobbled_track)
+  if last_scrobbled_track is not None and title == last_scrobbled_track[0] and artist == last_scrobbled_track[1]:
     print("Same track as before. Skipping.")
     return False
   elif title == "":
@@ -194,14 +194,16 @@ def check_and_make_scrobble_request(title: str, artist: str, album: str|None, st
     # Scrobble
     if album is None:
       album = ""
-    data = create_track_data_string(artist, title, album)
-    print(data)
+    data = create_track_data_string(track_title=title, artist=artist, album=album)
+    # print(data)
     response = scrobble_request(data)
-    print(response)
     # Log to DB
     if response == 200:
       add_play_to_db(title, artist, album, station_name, conn)
+      print("Response 200. Scrobbled successfully. Added to DB.")
       return True
+    else:
+      print(f"Response {response}. Failed to scrobble.")
 
 def find_track_details_and_scrobble(station_name: str, title:Optional[str], artist:Optional[str], album: Optional[str]):
   if cookies['PHPSESSID'] is None or headers['Authorization'] is None:

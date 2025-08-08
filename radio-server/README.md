@@ -229,7 +229,13 @@ You can find your Raspberry Pi's IP address using `hostname -I` on the Pi.
 
 View logs for more details:
 ```bash
+# Recent logs
 journalctl --user-unit pi-radio-server.service
+# Follow logs
+journalctl --follow --user-unit pi-radio-server.service
+# Historical logs
+journalctl --since="20 min ago" --until=now --user-unit pi-radio-server.service
+journalctl --since="2025-07-30 18:17:16" --until=now --user-unit pi-radio-server.service
 ```
 
 For everything else: Ask your friendly local LLM!

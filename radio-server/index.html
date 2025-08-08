@@ -465,7 +465,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const stations = await api.getStations();
         renderStations(stations);
         await fetchAndUpdateStatus();
-        setInterval(fetchAndUpdateStatus, 5000);
+        setInterval(fetchAndUpdateStatus, 30000);
     }
 
     initialize();
