@@ -7,22 +7,23 @@ from starlette.responses import HTMLResponse, JSONResponse
 from starlette.routing import Route
 from starlette.staticfiles import StaticFiles
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(".env")
+from scrobble import find_track_details_and_scrobble
 
 # --- Configuration ---
 # !!! IMPORTANT: Replace this with your speaker's MAC address !!!
 BLUETOOTH_DEVICE_MAC = os.getenv("JBL_GO_MAC_ADDRESS")
-STATIONS_FILE = "fm_stations.json"
+STATIONS_FILE = os.getenv("STATIONS_FILE", "fm_stations.json")
+BLUETOOTH_SCRIPT_PATH = os.getenv("BLUETOOTH_SCRIPT_PATH", "./bluetooth_speaker_setup.sh")
 
 # --- Global State ---
 # We use global state to keep track of the music player process.
 # This is simple and fine for a single-user Pi Zero application.
 playback_process = None
 current_station_info = { "name": None, "link": None }
+scrobbling_task = None
 
 # --- Helper Functions ---
-BLUETOOTH_SCRIPT_PATH = "./bluetooth_speaker_setup.sh" 
-
 def load_stations():
     """Loads station data from the JSON file."""
     try:
@@ -34,9 +35,45 @@ def load_stations():
 
 stations_data = load_stations()
 
+async def scrobbling_worker(station_name):
+    """
+    Worker function that runs the scrobbling process every 60 seconds.
+    """
+    print(f"Starting scrobbling worker for station: {station_name}")
+    
+    try:
+        while True:
+            try:
+                # Call your scrobbling function
+                # Note: If find_track_details_and_scrobble is synchronous, we run it in a thread pool
+                await asyncio.get_event_loop().run_in_executor(
+                    None, find_track_details_and_scrobble, station_name
+                )
+                print(f"Scrobbling track for station: {station_name}")
+            except Exception as e:
+                print(f"Error during scrobbling: {e}")
+            
+            # Wait 60 seconds before next scrobble attempt
+            await asyncio.sleep(60)
+            
+    except asyncio.CancelledError:
+        print(f"Scrobbling worker cancelled for station: {station_name}")
+        raise
+
 async def stop_playback_logic():
-    """Stops the mpg123 process if it's running."""
-    global playback_process, current_station_info
+    """Stops the mpg123 process and scrobbling task if they are running."""
+    global playback_process, current_station_info, scrobbling_task
+    # Stop the scrobbling task first
+    if scrobbling_task and not scrobbling_task.done():
+        print("Stopping scrobbling task...")
+        scrobbling_task.cancel()
+        try:
+            await scrobbling_task
+        except asyncio.CancelledError:
+            print("Scrobbling task cancelled successfully.")
+        scrobbling_task = None
+    
+    # Stop the playback process
     if playback_process and playback_process.returncode is None:
         print("Stopping current playback...")
         playback_process.terminate()
@@ -168,7 +205,7 @@ async def connect_bluetooth(request):
 
 async def play_station(request):
     """Plays a selected station."""
-    global playback_process, current_station_info
+    global playback_process, current_station_info, scrobbling_task
     
     # Stop any currently playing music first
     await stop_playback_logic()
@@ -190,11 +227,18 @@ async def play_station(request):
     
     print(f"Executing play command: {' '.join(command)}")
     
-    # Use asyncio.create_subprocess_exec for non-blocking command execution
-    playback_process = await asyncio.create_subprocess_exec(*command)
-    current_station_info = { "name": station_name, "link": station_link }
-    
-    return JSONResponse({"status": "success", "message": f"Playing {station_name}"})
+    try:
+        # Use asyncio.create_subprocess_exec for non-blocking command execution
+        playback_process = await asyncio.create_subprocess_exec(*command)
+        current_station_info = { "name": station_name, "link": station_link }
+        
+        # Start the scrobbling task
+        scrobbling_task = asyncio.create_task(scrobbling_worker(station_name))
+        print(f"Started scrobbling task for: {station_name}")
+        return JSONResponse({"status": "success", "message": f"Playing {station_name}"})
+    except Exception as e:
+        print(f"Error starting playback: {e}")
+        return JSONResponse({"status": "error", "message": f"Failed to start playback: {str(e)}"}, status_code=500)
 
 async def stop_playback(request):
     """Stops the music."""

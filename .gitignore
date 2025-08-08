@@ -1,4 +1,7 @@
 .DS_Store
+__pycache__
 backup_images
 *.img
 backup_config.conf
+radio-server/.scrobble-env
+radio-server/scrobble_history.db

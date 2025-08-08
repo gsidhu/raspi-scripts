@@ -1,6 +1,6 @@
 # Pi Music Server
 
-A web-app to stream internet radio stations.
+A web-app to stream internet radio stations and optionally scrobble them to last.fm.
 
 Designed to run on a Raspberry Pi. Includes Bluetooth speaker integration for wireless audio output.
 
@@ -90,6 +90,23 @@ loginctl show-user thatgurjot | grep Linger
 ```bash
 sudo reboot
 ```
+
+**(Optional) Scrobble to last.fm**
+
+1. Create an account on [last.fm](https://last.fm)
+2. Create an account on [Open Scrobbler](https://openscrobbler.com/) and connect it with your last.fm account.
+3. Open the network tab on your browser's console and manually add a track on Open Scrobbler.
+4. Copy the curl POST request it makes for scrobbling.
+5. Extract the `PHPSESSID` and `Authorisation` (Bearer token) value from the request.
+6. Create a `.scrobble-env` file in the root and add these variables –
+
+```env
+PHPSESSID="ufdft..."
+OPEN_SCROBBLER_JWT="Bearer eyJh...
+```
+
+> [!IMPORTANT]
+> If you do not want to scrobble, remember to comment out the `scrobbling_task` line in the `play_station` function in [server.py](./server.py)
 
 ### 2. Clone the Repository
 
