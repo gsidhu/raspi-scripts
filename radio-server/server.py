@@ -156,7 +156,7 @@ async def scrobbling_worker(station_name) -> None:
                 album = current_track_info.get("album")
                 
                 # Call the scrobbling function if track details available
-                if title is not None and artist is not None:
+                if title is not None and artist is not None and artist != station_name and title != station_name:
                     # Note: If find_track_details_and_scrobble is synchronous, we run it in a thread pool
                     await asyncio.get_event_loop().run_in_executor(
                         None, find_track_details_and_scrobble, station_name, title, artist, album

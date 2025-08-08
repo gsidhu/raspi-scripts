@@ -190,6 +190,8 @@ def check_and_make_scrobble_request(title: str, artist: str, album: str|None, st
   elif title == "":
     print("Couldn't find the track name. Skipping.")
     return False
+  elif title == station_name or artist == station_name:
+    print("Not a valid Artist or Title. Skipping.")
   else:
     # Scrobble
     if album is None:
