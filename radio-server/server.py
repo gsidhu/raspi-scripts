@@ -1,7 +1,7 @@
 import asyncio
 import json
 import os
-import subprocess
+import re
 from starlette.applications import Starlette
 from starlette.responses import HTMLResponse, JSONResponse
 from starlette.routing import Route
@@ -9,6 +9,7 @@ from starlette.staticfiles import StaticFiles
 from dotenv import load_dotenv
 load_dotenv(".env")
 from scrobble import find_track_details_and_scrobble
+from typing import Optional, Tuple
 
 # --- Configuration ---
 # !!! IMPORTANT: Replace this with your speaker's MAC address !!!
@@ -22,6 +23,7 @@ BLUETOOTH_SCRIPT_PATH = os.getenv("BLUETOOTH_SCRIPT_PATH", "./bluetooth_speaker_
 playback_process = None
 current_station_info = { "name": None, "link": None }
 scrobbling_task = None
+current_track_info = {"title": None, "artist": None, "album": None}
 
 # --- Helper Functions ---
 def load_stations():
@@ -35,7 +37,110 @@ def load_stations():
 
 stations_data = load_stations()
 
-async def scrobbling_worker(station_name):
+def extract_icy_meta(icy_meta_line: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Extract title and artist from ICY-META line.
+    
+    Example input: 
+        ICY-META: StreamTitle='Barry Can't Swim - The Person You’d Like To Be';StreamUrl='http://img.radioparadise.com/covers/l/24109.jpg';
+    
+    Args:
+        icy_meta_line: Line containing ICY-META information
+        
+    Returns:
+        Tuple of (title, artist) or (None, None) if extraction fails
+    """
+    try:
+        # Extract StreamTitle value using a non-greedy regex to handle internal quotes
+        stream_title_match = re.search(r"StreamTitle='(.*?)';", icy_meta_line)
+        if not stream_title_match:
+            return None, None
+            
+        stream_title = stream_title_match.group(1).strip().replace("'", "")
+        
+        # Common patterns for artist - title separation
+        separators = [' - ', ' – ', ' — ', ' | ', ': ']
+        
+        for separator in separators:
+            if separator in stream_title:
+                parts = stream_title.split(separator, 1)
+                if len(parts) == 2:
+                    artist = parts[0].strip()
+                    title = parts[1].strip()
+                    return title, artist
+        
+        # If no separator found, return the whole string as title and None for artist
+        return stream_title.strip(), None
+    except Exception as e:
+        print(f"Error extracting ICY meta: {e}")
+        return None, None
+
+async def monitor_mpg123_stdout_and_stderr() -> None:
+    """
+    Monitor mpg123 stdout and stderr for ICY-META information and update current track info.
+    """
+    global playback_process, current_track_info
+    
+    if not playback_process:
+        return
+        
+    print("Starting mpg123 output monitoring...")
+    
+    async def read_stream(stream, stream_name):
+        """Read from a stream and look for ICY-META lines"""
+        global playback_process, current_track_info
+        try:
+            while playback_process and playback_process.returncode is None:
+                line = await stream.readline()
+                if not line:
+                    break
+                    
+                line_str = line.decode('utf-8', errors='ignore').strip()
+                
+                # Print all output for debugging
+                if line_str:
+                    print(f"[{stream_name}] {line_str}")
+                
+                # Look for ICY-META lines
+                if line_str.startswith('ICY-META:') and 'StreamTitle=' in line_str:
+                    print(f"Found ICY-META in {stream_name}: {line_str}")
+                    
+                    title, artist = extract_icy_meta(line_str)
+                    if title or artist:
+                        # Update global track info
+                        current_track_info = {
+                            "title": title,
+                            "artist": artist, 
+                            "album": None  # ICY-META typically doesn't include album info
+                        }
+                        print(f"Updated track info - Artist: {artist}, Title: {title}")
+                        
+        except asyncio.CancelledError:
+            print(f"mpg123 {stream_name} monitoring cancelled")
+            raise
+        except Exception as e:
+            print(f"Error monitoring mpg123 {stream_name}: {e}")
+    
+    try:
+        # Monitor both stdout and stderr concurrently
+        tasks = []
+        if playback_process.stdout:
+            tasks.append(asyncio.create_task(read_stream(playback_process.stdout, "stdout")))
+        if playback_process.stderr:
+            tasks.append(asyncio.create_task(read_stream(playback_process.stderr, "stderr")))
+        
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        else:
+            print("No stdout or stderr available from mpg123 process")
+            
+    except asyncio.CancelledError:
+        print("mpg123 output monitoring cancelled")
+        raise
+    except Exception as e:
+        print(f"Error in mpg123 output monitoring: {e}")
+
+async def scrobbling_worker(station_name) -> None:
     """
     Worker function that runs the scrobbling process every 60 seconds.
     """
@@ -44,25 +149,32 @@ async def scrobbling_worker(station_name):
     try:
         while True:
             try:
-                # Call your scrobbling function
-                # Note: If find_track_details_and_scrobble is synchronous, we run it in a thread pool
-                await asyncio.get_event_loop().run_in_executor(
-                    None, find_track_details_and_scrobble, station_name
-                )
-                print(f"Scrobbling track for station: {station_name}")
+                # Get current track info
+                title = current_track_info.get("title")
+                artist = current_track_info.get("artist") 
+                album = current_track_info.get("album")
+                
+                # Call the scrobbling function if track details available
+                if title is not None and artist is not None:
+                    # Note: If find_track_details_and_scrobble is synchronous, we run it in a thread pool
+                    await asyncio.get_event_loop().run_in_executor(
+                        None, find_track_details_and_scrobble, station_name, title, artist, album
+                    )
+                    print(f"Scrobbling track for station: {station_name} - {artist} - {title}")
             except Exception as e:
                 print(f"Error during scrobbling: {e}")
             
-            # Wait 60 seconds before next scrobble attempt
-            await asyncio.sleep(60)
+            # Wait 30 seconds before next scrobble attempt
+            await asyncio.sleep(30)
             
     except asyncio.CancelledError:
         print(f"Scrobbling worker cancelled for station: {station_name}")
         raise
 
-async def stop_playback_logic():
-    """Stops the mpg123 process and scrobbling task if they are running."""
-    global playback_process, current_station_info, scrobbling_task
+async def stop_playback_logic() -> None:
+    """Stops the mpg123 process and scrobbling task if they're running."""
+    global playback_process, current_station_info, scrobbling_task, current_track_info
+    
     # Stop the scrobbling task first
     if scrobbling_task and not scrobbling_task.done():
         print("Stopping scrobbling task...")
@@ -79,8 +191,10 @@ async def stop_playback_logic():
         playback_process.terminate()
         await playback_process.wait()
         print("Playback stopped.")
+    
     playback_process = None
-    current_station_info = { "name": None, "link": None }
+    current_station_info = {"name": None, "link": None}
+    current_track_info = {"title": None, "artist": None, "album": None}
 
 async def get_status(request):
     """Checks Bluetooth and playback status using the management script."""
@@ -203,7 +317,7 @@ async def connect_bluetooth(request):
         print(f"ERROR: {message}")
         return JSONResponse({"status": "error", "message": message}, status_code=500)
 
-async def play_station(request):
+async def play_station(request) -> JSONResponse:
     """Plays a selected station."""
     global playback_process, current_station_info, scrobbling_task
     
@@ -221,15 +335,27 @@ async def play_station(request):
     
     # mpg123 -q (quiet) is essential to avoid verbose output
     if "mp3" in station_link:
-        command = ["mpg123", "-q", "-o", "pulse", station_link]
+        # Don't use -q flag for MP3 streams so we can capture ICY-META
+        command = ["mpg123", "-o", "pulse", station_link]
     else:
         command = ["ffplay", "-nodisp", "-autoexit", station_link]
     
     print(f"Executing play command: {' '.join(command)}")
     
     try:
-        # Use asyncio.create_subprocess_exec for non-blocking command execution
-        playback_process = await asyncio.create_subprocess_exec(*command)
+        # For mpg123 streams, we need to capture stdout and stderr
+        if "mp3" in station_link:
+            playback_process = await asyncio.create_subprocess_exec(
+                *command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
+            # Start monitoring stdout/stderr for ICY-META
+            asyncio.create_task(monitor_mpg123_stdout_and_stderr())
+        else:
+            # Use standard subprocess for other stations
+            # Use asyncio.create_subprocess_exec for non-blocking command execution
+            playback_process = await asyncio.create_subprocess_exec(*command)
         current_station_info = { "name": station_name, "link": station_link }
         
         # Start the scrobbling task

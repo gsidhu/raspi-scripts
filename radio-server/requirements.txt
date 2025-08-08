@@ -1,0 +1,5 @@
+starlette
+python-dotenv
+uvicorn
+requests
+beautifulsoup4

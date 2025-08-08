@@ -147,6 +147,7 @@ def setup_db(conn: Connection):
       )
   """)
   conn.commit()
+  print("Scrobbling History database set up successfully.")
 
 def add_play_to_db(title: str, artist: str, album: str, station: str, conn: Connection):
   cursor = conn.cursor()
@@ -179,11 +180,34 @@ def get_last_scrobbled_track_in_db(conn: Connection):
   
   return last_track
 
-def find_track_details_and_scrobble(station_name: str):
+def check_and_make_scrobble_request(title: str, artist: str, album: str|None, station_name: str, conn: Connection):
+  # Check against last track
+  last_scrobbled_track = get_last_scrobbled_track_in_db(conn)
+  print(last_scrobbled_track)
+  if last_scrobbled_track is not None and title == last_scrobbled_track[0] and artist == last_scrobbled_track[1] and album == last_scrobbled_track[2]:
+    print("Same track as before. Skipping.")
+    return False
+  elif title == "":
+    print("Couldn't find the track name. Skipping.")
+    return False
+  else:
+    # Scrobble
+    if album is None:
+      album = ""
+    data = create_track_data_string(artist, title, album)
+    print(data)
+    response = scrobble_request(data)
+    print(response)
+    # Log to DB
+    if response == 200:
+      add_play_to_db(title, artist, album, station_name, conn)
+      return True
+
+def find_track_details_and_scrobble(station_name: str, title:Optional[str], artist:Optional[str], album: Optional[str]):
   if cookies['PHPSESSID'] is None or headers['Authorization'] is None:
     print("Environment variables not loaded correctly. Skipping.")
     return
-  else:    
+  elif title is None and artist is None:
     # Get station details
     stations_json = load_stations()
     station_details = stations_json.get(station_name)
@@ -195,39 +219,29 @@ def find_track_details_and_scrobble(station_name: str):
     else:
       print("Couldn't find station details in JSON. Skipping.")
       return
-    
-    # Set up DB
-    conn = sqlite3.connect(db_path)
-    setup_db(conn)
-    
     # Get now playing details
     title_selector = css_selectors["title"] if "title" in css_selectors.keys() else ""
     artist_selector = css_selectors["artist"] if "artist" in css_selectors.keys() else ""
     album_selector = css_selectors["album"] if "album" in css_selectors.keys() else ""
     remove_string = css_selectors["remove"] if "remove" in css_selectors.keys() else ""
     result = load_url_and_find_text(station_web_link, title_selector, artist_selector, album_selector, remove_string)
-    
-    # Make scrobble request
     if result:
-      print(result)
-      # Check against last track
-      last_scrobbled_track = get_last_scrobbled_track_in_db(conn)
-      print(last_scrobbled_track)
-      if result[0] == last_scrobbled_track[0] and result[1] == last_scrobbled_track[1] and result[2] == last_scrobbled_track[2]:
-        print("Same track as before. Skipping.")
-        pass
-      else:
-        # Scrobble
-        data = create_track_data_string(result[1], result[0], result[2])
-        print(data)
-        response = scrobble_request(data)
-        print(response)
-        # Log to DB
-        if response == 200:
-          add_play_to_db(result[0], result[1], result[2], station_name, conn)
-    
+      title = result[0]
+      artist = result[1]
+      album = result[2]
+  
+  # Make scrobble request
+  if title and artist:
+    # Set up DB connection
+    conn = sqlite3.connect(db_path)
+    response = check_and_make_scrobble_request(title, artist, album, station_name, conn)  
     conn.close()
     
+# Set up DB (Runs automatically when script is loaded)
+conn = sqlite3.connect(db_path)
+setup_db(conn)
+conn.close()
+
 ## TEST
 # if __name__ == '__main__':
 #   station = "Radio Swiss Pop"

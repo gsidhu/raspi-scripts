@@ -132,8 +132,10 @@ python3 -m venv venv
 source venv/bin/activate
 
 # Install required Python packages
-# Based on server.py, dependencies are: starlette, python-dotenv, uvicorn
+## Based on server.py, dependencies are: starlette, python-dotenv, uvicorn
 pip install starlette python-dotenv uvicorn
+## For scrobbling, dependencies are: requests, beautifulsoup4
+pip install requests beautifulsoup4
 ```
 
 ### 4. Configure Bluetooth MAC Address
