@@ -2,32 +2,50 @@ import asyncio
 import json
 import os
 import re
+import uvicorn
 from starlette.applications import Starlette
+from starlette.requests import Request
 from starlette.responses import HTMLResponse, JSONResponse
 from starlette.routing import Route
 from starlette.staticfiles import StaticFiles
 from dotenv import load_dotenv
+from typing import Dict, List, Optional, Tuple, Any, Union
+from asyncio.subprocess import Process
+
 load_dotenv(".env")
 from scrobble import find_track_details_and_scrobble
-from typing import Optional, Tuple
+
+# Type aliases for better readability
+StationInfo = Dict[str, Optional[str]]
+TrackInfo = Dict[str, Optional[str]]
+StatusResponse = Dict[str, Union[str, bool, StationInfo]]
 
 # --- Configuration ---
 # !!! IMPORTANT: Replace this with your speaker's MAC address !!!
-BLUETOOTH_DEVICE_MAC = os.getenv("JBL_GO_MAC_ADDRESS")
-STATIONS_FILE = os.getenv("STATIONS_FILE", "fm_stations.json")
-BLUETOOTH_SCRIPT_PATH = os.getenv("BLUETOOTH_SCRIPT_PATH", "./bluetooth_speaker_setup.sh")
+BLUETOOTH_DEVICE_MAC: Optional[str] = os.getenv("JBL_GO_MAC_ADDRESS")
+STATIONS_FILE: str = os.getenv("STATIONS_FILE", "fm_stations.json")
+BLUETOOTH_SCRIPT_PATH: str = os.getenv("BLUETOOTH_SCRIPT_PATH", "./bluetooth_speaker_setup.sh")
 
 # --- Global State ---
 # We use global state to keep track of the music player process.
 # This is simple and fine for a single-user Pi Zero application.
-playback_process = None
-current_station_info = { "name": None, "link": None }
-scrobbling_task = None
-current_track_info = {"title": None, "artist": None, "album": None}
+playback_process: Optional[Process] = None
+current_station_info: StationInfo = {"name": None, "link": None}
+scrobbling_task: Optional[asyncio.Task] = None
+current_track_info: TrackInfo = {"title": None, "artist": None, "album": None}
 
 # --- Helper Functions ---
-def load_stations():
-    """Loads station data from the JSON file."""
+def load_stations() -> Dict[str, Any]:
+    """
+    Load radio station data from the JSON configuration file.
+    
+    Returns:
+        Dict containing station names and their streaming URLs.
+        Returns empty dict if file not found.
+    
+    Raises:
+        json.JSONDecodeError: If the JSON file is malformed.
+    """
     try:
         with open(STATIONS_FILE) as f:
             return json.load(f)
@@ -35,20 +53,25 @@ def load_stations():
         print(f"ERROR: {STATIONS_FILE} not found.")
         return {}
 
-stations_data = load_stations()
+stations_data: Dict[str, Any] = load_stations()
 
 def extract_icy_meta(icy_meta_line: str) -> Tuple[Optional[str], Optional[str]]:
     """
-    Extract title and artist from ICY-META line.
+    Extract track title and artist from ICY-META stream information.
     
-    Example input: 
-        ICY-META: StreamTitle='Barry Can't Swim - The Person You’d Like To Be';StreamUrl='http://img.radioparadise.com/covers/l/24109.jpg';
+    ICY-META is a protocol used by internet radio streams to transmit 
+    currently playing track information within the audio stream.
     
     Args:
-        icy_meta_line: Line containing ICY-META information
+        icy_meta_line: Raw ICY-META line from mpg123 output containing StreamTitle
         
     Returns:
-        Tuple of (title, artist) or (None, None) if extraction fails
+        Tuple of (title, artist). Returns (None, None) if extraction fails.
+        If no separator is found, returns (full_string, None).
+    
+    Example:
+        >>> extract_icy_meta("ICY-META: StreamTitle='Artist Name - Song Title';")
+        ('Song Title', 'Artist Name')
     """
     try:
         # Extract StreamTitle value using a non-greedy regex to handle internal quotes
@@ -77,7 +100,14 @@ def extract_icy_meta(icy_meta_line: str) -> Tuple[Optional[str], Optional[str]]:
 
 async def monitor_mpg123_stdout_and_stderr() -> None:
     """
-    Monitor mpg123 stdout and stderr for ICY-META information and update current track info.
+    Monitor mpg123 process output streams for ICY-META track information.
+    
+    This function continuously reads stdout and stderr from the mpg123 process
+    to capture real-time track information from internet radio streams.
+    Updates the global current_track_info when new track data is found.
+    
+    Raises:
+        asyncio.CancelledError: When the monitoring task is cancelled.
     """
     global playback_process, current_track_info
     
@@ -86,8 +116,14 @@ async def monitor_mpg123_stdout_and_stderr() -> None:
         
     print("Starting mpg123 output monitoring...")
     
-    async def read_stream(stream, stream_name):
-        """Read from a stream and look for ICY-META lines"""
+    async def read_stream(stream: asyncio.StreamReader, stream_name: str) -> None:
+        """
+        Read from a specific stream (stdout/stderr) and parse ICY-META lines.
+        
+        Args:
+            stream: The asyncio StreamReader to monitor.
+            stream_name: Human-readable name for logging ('stdout' or 'stderr').
+        """
         global playback_process, current_track_info
         try:
             while playback_process and playback_process.returncode is None:
@@ -124,7 +160,7 @@ async def monitor_mpg123_stdout_and_stderr() -> None:
     
     try:
         # Monitor both stdout and stderr concurrently
-        tasks = []
+        tasks: List[asyncio.Task] = []
         if playback_process.stdout:
             tasks.append(asyncio.create_task(read_stream(playback_process.stdout, "stdout")))
         if playback_process.stderr:
@@ -141,9 +177,18 @@ async def monitor_mpg123_stdout_and_stderr() -> None:
     except Exception as e:
         print(f"Error in mpg123 output monitoring: {e}")
 
-async def scrobbling_worker(station_name) -> None:
+async def scrobbling_worker(station_name: str) -> None:
     """
-    Worker function that runs the scrobbling process every 60 seconds.
+    Background worker that scrobbles currently playing tracks to Last.fm.
+    
+    Runs continuously, checking for track changes every 60 seconds and
+    calling the scrobbling function when valid track information is available.
+    
+    Args:
+        station_name: Name of the radio station for context in scrobbling.
+        
+    Raises:
+        asyncio.CancelledError: When the scrobbling task is cancelled.
     """
     print(f"Starting scrobbling worker for station: {station_name}")
     
@@ -173,7 +218,14 @@ async def scrobbling_worker(station_name) -> None:
         raise
 
 async def stop_playback_logic() -> None:
-    """Stops the mpg123 process and scrobbling task if they're running."""
+    """
+    Stop all playback-related processes and clean up global state.
+    
+    This function handles:
+    - Cancelling the background scrobbling task
+    - Terminating the mpg123/ffplay process
+    - Resetting global state variables
+    """
     global playback_process, current_station_info, scrobbling_task, current_track_info
     
     # Stop the scrobbling task first
@@ -197,10 +249,24 @@ async def stop_playback_logic() -> None:
     current_station_info = {"name": None, "link": None}
     current_track_info = {"title": None, "artist": None, "album": None}
 
-async def get_status(request):
-    """Checks Bluetooth and playback status using the management script."""
+async def get_status(request: Request) -> JSONResponse:
+    """
+    Get comprehensive system status including Bluetooth, audio, and playback state.
+    
+    Checks:
+    - Audio device connectivity via pactl
+    - Bluetooth speaker connection status via external script
+    - Current playback state and station information
+    
+    Args:
+        request: Starlette Request object (unused but required for route handler).
+        
+    Returns:
+        JSONResponse containing system status information.
+    """
+    audio_device_connected = False
     is_connected = False
-    bluetooth_error = None
+    bluetooth_error: Optional[str] = None
 
     try:
         # Construct the command to call the bash script with the --status argument
@@ -251,10 +317,15 @@ async def get_status(request):
         bluetooth_error = f"An unexpected error occurred while checking Bluetooth status: {str(e)}"
         print(f"ERROR: {bluetooth_error}")
 
+    # Check playback status
     is_playing = playback_process is not None and playback_process.returncode is None
+
+    # Check audio device status
+    audio_device_connected = await is_audio_device_connected()
     
-    status = {
-        "bluetooth_mac": BLUETOOTH_DEVICE_MAC,
+    status: StatusResponse = {
+        "audio_device_connected": audio_device_connected,
+        "bluetooth_mac": str(BLUETOOTH_DEVICE_MAC),
         "bluetooth_connected": is_connected,
         "is_playing": is_playing,
         "station": current_station_info
@@ -265,13 +336,93 @@ async def get_status(request):
 
     return JSONResponse(status)
 
-async def get_stations(request):
-    """Returns the list of radio stations."""
+async def is_audio_device_connected(device_name: Optional[str] = None) -> bool:
+    """
+    Check if an audio device is connected using PulseAudio's pactl command.
+    
+    Uses `pactl list sinks` to enumerate available audio output devices.
+    Can check for a specific device by name or just verify any sink exists.
+    
+    Excludes dummy output devices (auto_null, "Dummy Output").
+    
+    Args:
+        device_name: Optional device name/description pattern to search for.
+                    If None, checks if any audio sink is available.
+    
+    Returns:
+        True if the specified device is found or any sink exists, False otherwise.
+    """
+    try:
+        # Run pactl list sinks command
+        cmd = 'pactl list sinks'
+        proc = await asyncio.create_subprocess_shell(
+            cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        
+        # Wait for the process to complete and capture its output
+        stdout, stderr = await proc.communicate()
+        stdout_decoded = stdout.decode().strip()
+        stderr_decoded = stderr.decode().strip()
+        
+        # Split output into individual sink blocks
+        sink_blocks = re.split(r'Sink #\d+', stdout_decoded)[1:]  # Skip empty first element
+        
+        non_dummy_sinks = []
+        
+        for sink in sink_blocks:
+            # Check if this sink is a dummy output
+            is_dummy = (re.search(r'Name:\s*auto_null', sink, re.IGNORECASE) or
+                       re.search(r'Description:\s*Dummy Output', sink, re.IGNORECASE))
+            
+            if not is_dummy:
+                non_dummy_sinks.append(sink)
+                
+        # If no specific device name provided, check if any non-dummy sinks exist
+        if device_name is None:
+            return len(non_dummy_sinks) > 0
+        
+        # Check if the specified device name appears in non-dummy sinks
+        pattern = re.compile(re.escape(device_name), re.IGNORECASE)
+        for sink in non_dummy_sinks:
+            if pattern.search(sink):
+                return True
+        
+        return False
+    except FileNotFoundError:
+        # pactl not found on system
+        return False
+    except Exception as e:
+        print(f"ERROR: An unexpected error occurred while checking connected audio devices: {str(e)}")
+        return False
+
+async def get_stations(request: Request) -> JSONResponse:
+    """
+    Return the list of available radio stations from the JSON configuration.
+    
+    Args:
+        request: Starlette Request object (unused but required for route handler).
+        
+    Returns:
+        JSONResponse containing the stations data loaded from the config file.
+    """
     # Assuming stations_data is loaded globally
     return JSONResponse(stations_data)
 
-async def connect_bluetooth(request):
-    """Attempts to connect to the Bluetooth device using the management script."""
+async def connect_bluetooth(request: Request) -> JSONResponse:
+    """
+    Attempt to connect to the configured Bluetooth audio device.
+    
+    Uses an external bash script to handle Bluetooth connection logic.
+    The script should support the --connect flag with a MAC address parameter.
+    
+    Args:
+        request: Starlette Request object (unused but required for route handler).
+        
+    Returns:
+        JSONResponse indicating success/failure of the connection attempt.
+    """
     print(f"Attempting to connect to {BLUETOOTH_DEVICE_MAC} using script: {BLUETOOTH_SCRIPT_PATH}")
     try:
         # Construct the command to call the bash script with the --connect argument
@@ -318,16 +469,27 @@ async def connect_bluetooth(request):
         print(f"ERROR: {message}")
         return JSONResponse({"status": "error", "message": message}, status_code=500)
 
-async def play_station(request) -> JSONResponse:
-    """Plays a selected station."""
+async def play_station(request: Request) -> JSONResponse:
+    """
+    Start playback of a selected radio station.
+    
+    Stops any currently playing audio, then starts a new mpg123 or ffplay process
+    for the requested station. Also starts background scrobbling for MP3 streams.
+    
+    Args:
+        request: Starlette Request containing JSON data with 'name' and 'link' fields.
+        
+    Returns:
+        JSONResponse indicating success/failure of playback initiation.
+    """
     global playback_process, current_station_info, scrobbling_task
     
     # Stop any currently playing music first
     await stop_playback_logic()
     
     data = await request.json()
-    station_name = data.get("name")
-    station_link = data.get("link")
+    station_name: Optional[str] = data.get("name")
+    station_link: Optional[str] = data.get("link")
 
     if not station_link:
         return JSONResponse({"status": "error", "message": "Station link not provided."}, status_code=400)
@@ -357,23 +519,39 @@ async def play_station(request) -> JSONResponse:
             # Use standard subprocess for other stations
             # Use asyncio.create_subprocess_exec for non-blocking command execution
             playback_process = await asyncio.create_subprocess_exec(*command)
-        current_station_info = { "name": station_name, "link": station_link }
+        current_station_info = {"name": station_name, "link": station_link}
         
         # Start the scrobbling task
-        scrobbling_task = asyncio.create_task(scrobbling_worker(station_name))
+        scrobbling_task = asyncio.create_task(scrobbling_worker(station_name or "Unknown Station"))
         print(f"Started scrobbling task for: {station_name}")
         return JSONResponse({"status": "success", "message": f"Playing {station_name}"})
     except Exception as e:
         print(f"Error starting playback: {e}")
         return JSONResponse({"status": "error", "message": f"Failed to start playback: {str(e)}"}, status_code=500)
 
-async def stop_playback(request):
-    """Stops the music."""
+async def stop_playback(request: Request) -> JSONResponse:
+    """
+    Stop all audio playback and related background tasks.
+    
+    Args:
+        request: Starlette Request object (unused but required for route handler).
+        
+    Returns:
+        JSONResponse confirming playback has been stopped.
+    """
     await stop_playback_logic()
     return JSONResponse({"status": "success", "message": "Playback stopped."})
 
-async def set_volume(request):
-    """Sets the volume using amixer."""
+async def set_volume(request: Request) -> JSONResponse:
+    """
+    Set the system audio volume using amixer.
+    
+    Args:
+        request: Starlette Request with volume level as a path parameter.
+        
+    Returns:
+        JSONResponse indicating success/failure of volume adjustment.
+    """
     try:
         # Extract volume from path parameters
         volume = int(request.path_params["volume"])
@@ -410,8 +588,16 @@ async def set_volume(request):
         print(f"Error setting volume: {str(e)}")
         return JSONResponse({"error": str(e), "status": "error"}, status_code=500)
 
-async def current_volume(request):
-    """Gets the current volume level using amixer."""
+async def current_volume(request: Request) -> JSONResponse:
+    """
+    Get the current system audio volume level using amixer.
+    
+    Args:
+        request: Starlette Request object (unused but required for route handler).
+        
+    Returns:
+        JSONResponse containing the current volume percentage (0-100).
+    """
     try:
         cmd = ["amixer", "-D", "pulse", "get", "Master"]
         process = await asyncio.create_subprocess_exec(
@@ -434,7 +620,6 @@ async def current_volume(request):
         for line in output.splitlines():
             if "Mono:" in line or "Front Left:" in line:
                 # Look for percentage in brackets like [50%]
-                import re
                 match = re.search(r'\[(\d+)%\]', line)
                 if match:
                     volume = int(match.group(1))
@@ -461,8 +646,16 @@ async def current_volume(request):
         print(f"Error getting current volume: {str(e)}")
         return JSONResponse({"error": str(e), "volume": None}, status_code=500)
 
-async def homepage(request):
-    """Serves the main HTML page."""
+async def homepage(request: Request) -> HTMLResponse:
+    """
+    Serve the main HTML interface page.
+    
+    Args:
+        request: Starlette Request object (unused but required for route handler).
+        
+    Returns:
+        HTMLResponse containing the radio station interface HTML.
+    """
     try:
         with open("index.html", "r") as f:
             html_content = f.read()
@@ -487,9 +680,8 @@ app = Starlette(debug=False, routes=routes)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 if __name__ == "__main__":
-    import uvicorn
     # Check for placeholder MAC address
-    if "XX:XX:XX:XX:XX:XX" in BLUETOOTH_DEVICE_MAC:
+    if BLUETOOTH_DEVICE_MAC and "XX:XX:XX:XX:XX:XX" in BLUETOOTH_DEVICE_MAC:
         print("\n" + "="*60)
         print("!!! WARNING: You have not set your Bluetooth MAC address. !!!")
         print(f"Please edit server.py and change the BLUETOOTH_DEVICE_MAC variable.")

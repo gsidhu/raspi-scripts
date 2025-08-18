@@ -87,6 +87,7 @@
         .status-light.green { background-color: var(--green-color); color: var(--green-color); }
         .status-light.red { background-color: var(--red-color); color: var(--red-color); }
         
+        #audio-device-status-text,
         #bt-status-text { 
             font-family: monospace; 
             font-size: 1.1em;
@@ -209,12 +210,16 @@
         <h1>Pi Radio Controller</h1>
 
         <div class="card">
-            <h2>Bluetooth Status</h2>
+            <h2>Audio Device Status</h2>
+            <p>
+                <span id="audio-device-status-light" class="status-light red"></span>
+                <span id="audio-device-status-text">Checking...</span>
+            </p>
             <p>
                 <span id="bt-status-light" class="status-light red"></span>
                 <span id="bt-status-text">Checking...</span>
             </p>
-            <button id="bt-connect-btn">Connect Speaker</button>
+            <button id="bt-connect-btn">Connect BT Speaker</button>
         </div>
 
         <!-- Volume Control Card -->
@@ -251,6 +256,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // This event guarantees the DOM is ready, but it's best practice
     // to keep the script tag at the end of the body anyway.
 
+    const audioDeviceStatusLight = document.getElementById('audio-device-status-light');
+    const audioDeviceText = document.getElementById('audio-device-status-text');
     const btStatusLight = document.getElementById('bt-status-light');
     const btStatusText = document.getElementById('bt-status-text');
     const btConnectBtn = document.getElementById('bt-connect-btn');
@@ -283,8 +290,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- UI Update Functions ---
     function updateStatusUI(status) {
+        // Update audio device status
+        audioDeviceText.textContent = `Audio device ${status.audio_device_connected ? 'connected' : 'not connected'}`;
+        audioDeviceStatusLight.className = `status-light ${status.audio_device_connected ? 'green' : 'red'}`;
         // Update Bluetooth status
-        btStatusText.textContent = `Device (${status.bluetooth_mac}) is ${status.bluetooth_connected ? 'Connected' : 'Disconnected'}`;
+        btStatusText.textContent = `Bluetooth Device (${status.bluetooth_mac}) is ${status.bluetooth_connected ? 'Connected' : 'Disconnected'}`;
         btStatusLight.className = `status-light ${status.bluetooth_connected ? 'green' : 'red'}`;
         btConnectBtn.disabled = status.bluetooth_connected;
 
