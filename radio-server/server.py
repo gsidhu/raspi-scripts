@@ -18,7 +18,7 @@ from scrobble import find_track_details_and_scrobble
 # Type aliases for better readability
 StationInfo = Dict[str, Optional[str]]
 TrackInfo = Dict[str, Optional[str]]
-StatusResponse = Dict[str, Union[str, bool, StationInfo]]
+StatusResponse = Dict[str, Union[str, bool, StationInfo, TrackInfo]]
 
 # --- Configuration ---
 # !!! IMPORTANT: Replace this with your speaker's MAC address !!!
@@ -328,7 +328,8 @@ async def get_status(request: Request) -> JSONResponse:
         "bluetooth_mac": str(BLUETOOTH_DEVICE_MAC),
         "bluetooth_connected": is_connected,
         "is_playing": is_playing,
-        "station": current_station_info
+        "station": current_station_info,
+        "current_track_info": current_track_info
     }
     
     if bluetooth_error:

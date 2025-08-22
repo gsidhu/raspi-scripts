@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,13 +30,20 @@
         /* --- CUTE & PINK THEME --- */
         :root {
             /* Define the cute color palette */
-            --bg-color: #fdf6f8; /* Very light rosy white */
-            --font-color: #5c5462; /* Soft dark desaturated purple */
-            --primary-color: #ff8fab; /* Main soft pink */
-            --accent-color: #fbc4d4; /* Lighter pastel pink for borders/accents */
-            --green-color: #a8e6cf; /* Soft mint green */
-            --red-color: #ff8a80; /* Soft coral/red */
-            --card-bg: #ffffff; /* Clean white for cards */
+            --bg-color: #fdf6f8;
+            /* Very light rosy white */
+            --font-color: #5c5462;
+            /* Soft dark desaturated purple */
+            --primary-color: #ff8fab;
+            /* Main soft pink */
+            --accent-color: #fbc4d4;
+            /* Lighter pastel pink for borders/accents */
+            --green-color: #a8e6cf;
+            /* Soft mint green */
+            --red-color: #ff8a80;
+            /* Soft coral/red */
+            --card-bg: #ffffff;
+            /* Clean white for cards */
             --white-text: #ffffff;
         }
 
@@ -53,9 +61,11 @@
         .container {
             max-width: 600px;
             width: 100%;
+            margin-bottom: 10em;
         }
 
-        h1, h2 {
+        h1,
+        h2 {
             color: var(--primary-color);
             font-weight: 800;
             /* A cute dashed border instead of a solid one */
@@ -81,15 +91,25 @@
             border-radius: 50%;
             margin-right: 8px;
             vertical-align: middle;
-            border: 2px solid var(--card-bg); /* Adds a little definition */
-            box-shadow: 0 0 5px currentColor; /* Makes the light glow */
+            border: 2px solid var(--card-bg);
+            /* Adds a little definition */
+            box-shadow: 0 0 5px currentColor;
+            /* Makes the light glow */
         }
-        .status-light.green { background-color: var(--green-color); color: var(--green-color); }
-        .status-light.red { background-color: var(--red-color); color: var(--red-color); }
-        
+
+        .status-light.green {
+            background-color: var(--green-color);
+            color: var(--green-color);
+        }
+
+        .status-light.red {
+            background-color: var(--red-color);
+            color: var(--red-color);
+        }
+
         #audio-device-status-text,
-        #bt-status-text { 
-            font-family: monospace; 
+        #bt-status-text {
+            font-family: monospace;
             font-size: 1.1em;
         }
 
@@ -115,16 +135,20 @@
         }
 
         button:disabled {
-            background-color: #d1c9d6; /* Softer disabled color */
+            background-color: #d1c9d6;
+            /* Softer disabled color */
             cursor: not-allowed;
             box-shadow: none;
         }
 
-        .stop-button { 
+        .stop-button {
             background-color: var(--red-color);
+            border: 1px solid var(--font-color);
             box-shadow: 0 2px 5px rgba(255, 138, 128, 0.5);
-         }
+        }
+
         .stop-button:hover:not(:disabled) {
+            color: var(--font-color);
             box-shadow: 0 4px 10px rgba(255, 138, 128, 0.7);
         }
 
@@ -135,16 +159,21 @@
             padding: 12px 5px;
             border-bottom: 1px solid var(--accent-color);
         }
-        .station-item:last-child { border-bottom: none; }
-        
+
+        .station-item:last-child {
+            border-bottom: none;
+        }
+
         .station-info strong {
             font-size: 1.1em;
             font-weight: 700;
         }
+
         .station-info p {
             margin: 0;
             font-size: 0.9em;
-            color: #b1a9b9; /* Softer gray for description */
+            color: #b1a9b9;
+            /* Softer gray for description */
         }
 
         .station-info small {
@@ -164,33 +193,66 @@
             right: 0;
             background-color: var(--primary-color);
             color: var(--white-text);
-            padding: 15px;
-            text-align: center;
+            padding: 15px 20px;
+            display: none;
+            /* Hidden by default */
+            box-shadow: 0 -3px 15px rgba(231, 185, 203, 0.5);
+            border-top: 3px solid var(--accent-color);
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
             font-weight: 700;
             font-size: 1.1em;
-            display: none; /* Hidden by default */
-            box-shadow: 0 -3px 15px rgba(231, 185, 203, 0.5); /* Shadow to separate from content */
-            border-top: 3px solid var(--accent-color);
+        }
+
+        #now-playing-label {
+            white-space: nowrap;
+            font-weight: 800;
+        }
+
+        #now-playing-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 1;
+        }
+
+        /* Responsive: stack on small screens */
+        @media (max-width: 600px) {
+            #now-playing {
+                flex-direction: column;
+                align-items: center;
+                text-align: left;
+            }
+
+            #now-playing-label {
+                margin-bottom: 8px;
+            }
         }
 
         /* --- Volume Control Styles --- */
         .volume-control {
             display: flex;
+            flex-wrap: wrap;
+            gap: 0.1rem;
             justify-content: space-between;
             align-items: center;
             margin-top: 15px;
         }
+
         .volume-control button {
-            padding: 8px 15px; /* Smaller buttons for volume */
+            padding: 8px 15px;
+            /* Smaller buttons for volume */
             font-size: 0.9em;
             box-shadow: 0 2px 5px rgba(255, 143, 171, 0.3);
         }
+
         .volume-control button:hover:not(:disabled) {
             box-shadow: 0 4px 10px rgba(255, 143, 171, 0.5);
         }
+
         #current-volume-display {
-            font-weight: 700;
-            font-size: 1.2em;
             color: var(--primary-color);
         }
 
@@ -205,6 +267,7 @@
         }
     </style>
 </head>
+
 <body>
     <div class="container">
         <h1>Pi Radio Controller</h1>
@@ -224,11 +287,22 @@
 
         <!-- Volume Control Card -->
         <div class="card">
-            <h2>Volume Control</h2>
+            <h2>Volume: <span id="current-volume-display">--%</span></h2>
             <div class="volume-control">
-                <button id="volume-down-btn" class="volume-btn">-10</button>
-                <span id="current-volume-display">Volume: --%</span>
-                <button id="volume-up-btn" class="volume-btn">+10</button>
+                <!-- <button id="volume-down-btn" class="volume-btn">-10</button>
+                <button id="volume-up-btn" class="volume-btn">+10</button> -->
+                <button class="volume-btn" data-volume="0">0</button>
+                <button class="volume-btn" data-volume="10">1</button>
+                <button class="volume-btn" data-volume="20">2</button>
+                <button class="volume-btn" data-volume="30">3</button>
+                <button class="volume-btn" data-volume="40">4</button>
+                <button class="volume-btn" data-volume="50">5</button>
+                <button class="volume-btn" data-volume="60">6</button>
+                <button class="volume-btn" data-volume="70">7</button>
+                <!-- <button class="volume-btn" data-volume="80">8</button>
+                <button class="volume-btn" data-volume="90">9</button>
+                <button class="volume-btn" data-volume="95">10</button>
+                <button class="volume-btn" data-volume="100">11</button> -->
             </div>
         </div>
 
@@ -241,149 +315,160 @@
             </div>
         </div>
     </div>
-    
+
     <div id="now-playing">
-        Now Playing: <span id="now-playing-station">None</span>
+        <span id="now-playing-label">Now Playing:</span>
+        <div id="now-playing-info">
+            <div>🎤 <span id="now-playing-artist"></span></div>
+            <div>🎵 <span id="now-playing-title"></span></div>
+            <div>📻 <span id="now-playing-station"></span></div>
+        </div>
         <button id="stop-btn" class="stop-button" style="margin-left: 20px;">STOP</button>
     </div>
 
-<!-- 
+    <!-- 
     The script tag MUST be here, at the end of the body.
     This ensures all HTML elements above have been loaded before the script runs.
 -->
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    // This event guarantees the DOM is ready, but it's best practice
-    // to keep the script tag at the end of the body anyway.
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // This event guarantees the DOM is ready, but it's best practice
+            // to keep the script tag at the end of the body anyway.
 
-    const audioDeviceStatusLight = document.getElementById('audio-device-status-light');
-    const audioDeviceText = document.getElementById('audio-device-status-text');
-    const btStatusLight = document.getElementById('bt-status-light');
-    const btStatusText = document.getElementById('bt-status-text');
-    const btConnectBtn = document.getElementById('bt-connect-btn');
-    const stationList = document.getElementById('station-list');
-    const radioStationHeader = document.getElementById('radio-station-header');
-    const categoryButtonsContainer = document.getElementById('category-buttons'); // Get the new container
-    const nowPlayingBar = document.getElementById('now-playing');
-    const nowPlayingStation = document.getElementById('now-playing-station');
-    const stopBtn = document.getElementById('stop-btn');
+            const audioDeviceStatusLight = document.getElementById('audio-device-status-light');
+            const audioDeviceText = document.getElementById('audio-device-status-text');
+            const btStatusLight = document.getElementById('bt-status-light');
+            const btStatusText = document.getElementById('bt-status-text');
+            const btConnectBtn = document.getElementById('bt-connect-btn');
+            const stationList = document.getElementById('station-list');
+            const radioStationHeader = document.getElementById('radio-station-header');
+            const categoryButtonsContainer = document.getElementById('category-buttons'); // Get the new container
+            const nowPlayingBar = document.getElementById('now-playing');
+            const nowPlayingArtistText = document.getElementById('now-playing-artist');
+            const nowPlayingTitleText = document.getElementById('now-playing-title');
+            const nowPlayingStationText = document.getElementById('now-playing-station');
+            const stopBtn = document.getElementById('stop-btn');
 
-    // --- New Volume Control Elements ---
-    const volumeDownBtn = document.getElementById('volume-down-btn');
-    const volumeUpBtn = document.getElementById('volume-up-btn');
-    const currentVolumeDisplay = document.getElementById('current-volume-display');
+            // --- New Volume Control Elements ---
+            const volumeDownBtn = document.getElementById('volume-down-btn');
+            const volumeUpBtn = document.getElementById('volume-up-btn');
+            const currentVolumeDisplay = document.getElementById('current-volume-display');
 
-    // --- API Functions ---
-    const api = {
-        getStatus: () => fetch('/api/status').then(res => res.json()),
-        getStations: () => fetch('/api/stations').then(res => res.json()),
-        connectBluetooth: () => fetch('/api/bluetooth/connect', { method: 'POST' }),
-        play: (name, link) => fetch('/api/play', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, link })
-        }),
-        stop: () => fetch('/api/stop', { method: 'POST' }),
-        getVolume: () => fetch('/api/current_volume').then(res => res.json()),
-        setVolume: (volume) => fetch(`/api/volume/${volume}`, { method: 'POST' })
-    };
+            // --- API Functions ---
+            const api = {
+                getStatus: () => fetch('/api/status').then(res => res.json()),
+                getStations: () => fetch('/api/stations').then(res => res.json()),
+                connectBluetooth: () => fetch('/api/bluetooth/connect', { method: 'POST' }),
+                play: (name, link) => fetch('/api/play', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, link })
+                }),
+                stop: () => fetch('/api/stop', { method: 'POST' }),
+                getVolume: () => fetch('/api/current_volume').then(res => res.json()),
+                setVolume: (volume) => fetch(`/api/volume/${volume}`, { method: 'POST' })
+            };
 
-    // --- UI Update Functions ---
-    function updateStatusUI(status) {
-        // Update audio device status
-        audioDeviceText.textContent = `Audio device ${status.audio_device_connected ? 'connected' : 'not connected'}`;
-        audioDeviceStatusLight.className = `status-light ${status.audio_device_connected ? 'green' : 'red'}`;
-        // Update Bluetooth status
-        btStatusText.textContent = `Bluetooth Device (${status.bluetooth_mac}) is ${status.bluetooth_connected ? 'Connected' : 'Disconnected'}`;
-        btStatusLight.className = `status-light ${status.bluetooth_connected ? 'green' : 'red'}`;
-        btConnectBtn.disabled = status.bluetooth_connected;
+            // --- UI Update Functions ---
+            function updateStatusUI(status) {
+                // Update audio device status
+                audioDeviceText.textContent = `Audio device ${status.audio_device_connected ? 'connected' : 'not connected'}`;
+                audioDeviceStatusLight.className = `status-light ${status.audio_device_connected ? 'green' : 'red'}`;
+                // Update Bluetooth status
+                btStatusText.textContent = `Bluetooth Device (${status.bluetooth_mac}) is ${status.bluetooth_connected ? 'Connected' : 'Disconnected'}`;
+                btStatusLight.className = `status-light ${status.bluetooth_connected ? 'green' : 'red'}`;
+                btConnectBtn.disabled = status.bluetooth_connected;
 
-        // Update Now Playing bar
-        if (status.is_playing && status.station.name) {
-            nowPlayingStation.textContent = status.station.name;
-            nowPlayingBar.style.display = 'block';
-        } else {
-            nowPlayingBar.style.display = 'none';
-        }
-        
-        // Update play buttons state
-        const playButtons = document.querySelectorAll('.play-btn');
-        playButtons.forEach(button => {
-            button.disabled = false;
-            button.textContent = 'Play';
-            if (status.is_playing && button.dataset.link === status.station.link) {
-                button.textContent = 'Playing...';
-                button.disabled = true;
-            }
-        });
-    }
-
-    // Function to update the volume display
-    function updateVolumeDisplay(volume) {
-        if (volume !== null && volume !== undefined) {
-            currentVolumeDisplay.textContent = `Volume: ${volume}%`;
-        } else {
-            currentVolumeDisplay.textContent = 'Volume: --%';
-        }
-    }
-
-    // --- Modified renderStations function ---
-    let allStationsData = {}; // Store all stations data globally within this scope
-
-    function renderStations(stations) {
-        allStationsData = stations; // Store stations for filtering
-        const stationsByCategory = {};
-        for (const [name, data] of Object.entries(stations)) {
-            const source = data.Source;
-            if (!stationsByCategory[source]) {
-                stationsByCategory[source] = [];
-            }
-            stationsByCategory[source].push({ name, data });
-        }
-
-        // Clear existing buttons and station list
-        categoryButtonsContainer.innerHTML = '';
-        stationList.innerHTML = '';
-
-        // Add "All" button
-        const allButton = document.createElement('button');
-        allButton.textContent = 'All';
-        allButton.classList.add('category-btn');
-        allButton.dataset.category = 'all';
-        categoryButtonsContainer.appendChild(allButton);
-
-        // Add buttons for each category
-        for (const category in stationsByCategory) {
-            const button = document.createElement('button');
-            button.textContent = category;
-            button.classList.add('category-btn');
-            button.dataset.category = category;
-            categoryButtonsContainer.appendChild(button);
-        }
-
-        // Function to display stations based on selected category
-        function displayStations(categoryFilter = 'All') {
-            stationList.innerHTML = ''; // Clear current list
-
-            let stationsToDisplay = [];
-            if (categoryFilter === 'All') {
-                // Flatten all stations if 'All' is selected
-                for (const category in stationsByCategory) {
-                    stationsToDisplay = stationsToDisplay.concat(stationsByCategory[category]);
+                // Update Now Playing bar
+                if (status.is_playing && status.station.name) {
+                    nowPlayingBar.style.display = 'flex';
+                    nowPlayingStationText.textContent = status.station.name;
+                    if (status.current_track_info && status.current_track_info.title && status.current_track_info.artist) {
+                        nowPlayingArtistText.textContent = status.current_track_info.artist;
+                        nowPlayingTitleText.textContent = status.current_track_info.title;
+                    }
+                } else {
+                    nowPlayingBar.style.display = 'none';
                 }
-            } else {
-                stationsToDisplay = stationsByCategory[categoryFilter] || [];
+
+                // Update play buttons state
+                const playButtons = document.querySelectorAll('.play-btn');
+                playButtons.forEach(button => {
+                    button.disabled = false;
+                    button.textContent = 'Play';
+                    if (status.is_playing && button.dataset.link === status.station.link) {
+                        button.textContent = 'Playing...';
+                        button.disabled = true;
+                    }
+                });
             }
 
-            if (stationsToDisplay.length === 0) {
-                stationList.innerHTML = '<p>No stations found for this category.</p>';
-                return;
+            // Function to update the volume display
+            function updateVolumeDisplay(volume) {
+                if (volume !== null && volume !== undefined) {
+                    currentVolumeDisplay.textContent = `${volume}%`;
+                } else {
+                    currentVolumeDisplay.textContent = '--%';
+                }
             }
 
-            stationsToDisplay.forEach(({ name, data }) => {
-                const item = document.createElement('div');
-                item.className = 'station-item';
-                item.innerHTML = `
+            // --- Modified renderStations function ---
+            let allStationsData = {}; // Store all stations data globally within this scope
+
+            function renderStations(stations) {
+                allStationsData = stations; // Store stations for filtering
+                const stationsByCategory = {};
+                for (const [name, data] of Object.entries(stations)) {
+                    const source = data.Source;
+                    if (!stationsByCategory[source]) {
+                        stationsByCategory[source] = [];
+                    }
+                    stationsByCategory[source].push({ name, data });
+                }
+
+                // Clear existing buttons and station list
+                categoryButtonsContainer.innerHTML = '';
+                stationList.innerHTML = '';
+
+                // Add "All" button
+                const allButton = document.createElement('button');
+                allButton.textContent = 'All';
+                allButton.classList.add('category-btn');
+                allButton.dataset.category = 'All';
+                categoryButtonsContainer.appendChild(allButton);
+
+                // Add buttons for each category
+                for (const category in stationsByCategory) {
+                    const button = document.createElement('button');
+                    button.textContent = category;
+                    button.classList.add('category-btn');
+                    button.dataset.category = category;
+                    categoryButtonsContainer.appendChild(button);
+                }
+
+                // Function to display stations based on selected category
+                function displayStations(categoryFilter = 'All') {
+                    stationList.innerHTML = ''; // Clear current list
+
+                    let stationsToDisplay = [];
+                    if (categoryFilter === 'All') {
+                        // Flatten all stations if 'All' is selected
+                        for (const category in stationsByCategory) {
+                            stationsToDisplay = stationsToDisplay.concat(stationsByCategory[category]);
+                        }
+                    } else {
+                        stationsToDisplay = stationsByCategory[categoryFilter] || [];
+                    }
+
+                    if (stationsToDisplay.length === 0) {
+                        stationList.innerHTML = '<p>No stations found for this category.</p>';
+                        return;
+                    }
+
+                    stationsToDisplay.forEach(({ name, data }) => {
+                        const item = document.createElement('div');
+                        item.className = 'station-item';
+                        item.innerHTML = `
                     <div class="station-info">
                         <strong>${name}</strong>
                         <p>${data.Description}</p>
@@ -391,96 +476,111 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <button class="play-btn" data-name="${name}" data-link="${data.Link}">Play</button>
                 `;
-                stationList.appendChild(item);
+                        stationList.appendChild(item);
+                    });
+
+                    radioStationHeader.innerText = categoryFilter + " Radio Stations"
+                }
+
+                // Initial display of all stations
+                displayStations();
+
+                // Add event listeners for category buttons
+                categoryButtonsContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('category-btn')) {
+                        const selectedCategory = e.target.dataset.category;
+                        displayStations(selectedCategory);
+                    }
+                });
+            }
+
+            // --- Event Listeners ---
+            stationList.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('play-btn')) {
+                    const name = e.target.dataset.name;
+                    const link = e.target.dataset.link;
+                    e.target.textContent = "Loading...";
+                    e.target.disabled = true;
+                    await api.play(name, link);
+                    await fetchAndUpdateStatus();
+                }
             });
 
-            radioStationHeader.innerText = categoryFilter + " Radio Stations"
-        }
+            btConnectBtn.addEventListener('click', async () => {
+                btStatusText.textContent = 'Sending connect command...';
+                btConnectBtn.disabled = true;
+                await api.connectBluetooth();
+                setTimeout(fetchAndUpdateStatus, 3000);
+            });
 
-        // Initial display of all stations
-        displayStations();
+            stopBtn.addEventListener('click', async () => {
+                await api.stop();
+                await fetchAndUpdateStatus();
+            });
 
-        // Add event listeners for category buttons
-        categoryButtonsContainer.addEventListener('click', (e) => {
-            if (e.target.classList.contains('category-btn')) {
-                const selectedCategory = e.target.dataset.category;
-                displayStations(selectedCategory);
+            async function setVolume(newVolume) {
+                await api.setVolume(newVolume);
+                await fetchAndUpdateStatus(); // Re-fetch status to update volume display
             }
-        });
-    }
 
-    // --- Event Listeners ---
-    stationList.addEventListener('click', async (e) => {
-        if (e.target.classList.contains('play-btn')) {
-            const name = e.target.dataset.name;
-            const link = e.target.dataset.link;
-            e.target.textContent = "Loading...";
-            e.target.disabled = true;
-            await api.play(name, link);
-            await fetchAndUpdateStatus(); 
-        }
-    });
+            // --- Volume Control Event Listeners ---
+            if (volumeDownBtn && volumeUpBtn && currentVolumeDisplay) {
+                volumeDownBtn.addEventListener('click', async () => {
+                    let currentVolume = parseInt(currentVolumeDisplay.textContent.replace('Volume: ', '').replace('%', ''), 10);
+                    if (isNaN(currentVolume)) { // If display is '--%' or invalid
+                        currentVolume = 50; // Default to a mid-range value if unknown
+                    }
+                    let newVolume = Math.max(0, currentVolume - 10);
+                    await api.setVolume(newVolume);
+                    await fetchAndUpdateStatus(); // Re-fetch status to update volume display
+                });
 
-    btConnectBtn.addEventListener('click', async () => {
-        btStatusText.textContent = 'Sending connect command...';
-        btConnectBtn.disabled = true;
-        await api.connectBluetooth();
-        setTimeout(fetchAndUpdateStatus, 3000); 
-    });
-
-    stopBtn.addEventListener('click', async () => {
-        await api.stop();
-        await fetchAndUpdateStatus();
-    });
-
-    // --- Volume Control Event Listeners ---
-    if (volumeDownBtn && volumeUpBtn && currentVolumeDisplay) {
-        volumeDownBtn.addEventListener('click', async () => {
-            let currentVolume = parseInt(currentVolumeDisplay.textContent.replace('Volume: ', '').replace('%', ''), 10);
-            if (isNaN(currentVolume)) { // If display is '--%' or invalid
-                currentVolume = 50; // Default to a mid-range value if unknown
+                volumeUpBtn.addEventListener('click', async () => {
+                    let currentVolume = parseInt(currentVolumeDisplay.textContent.replace('Volume: ', '').replace('%', ''), 10);
+                    if (isNaN(currentVolume)) { // If display is '--%' or invalid
+                        currentVolume = 50; // Default to a mid-range value if unknown
+                    }
+                    let newVolume = Math.min(100, currentVolume + 10);
+                    await api.setVolume(newVolume);
+                    await fetchAndUpdateStatus(); // Re-fetch status to update volume display
+                });
             }
-            let newVolume = Math.max(0, currentVolume - 10);
-            await api.setVolume(newVolume);
-            await fetchAndUpdateStatus(); // Re-fetch status to update volume display
-        });
 
-        volumeUpBtn.addEventListener('click', async () => {
-            let currentVolume = parseInt(currentVolumeDisplay.textContent.replace('Volume: ', '').replace('%', ''), 10);
-            if (isNaN(currentVolume)) { // If display is '--%' or invalid
-                currentVolume = 50; // Default to a mid-range value if unknown
+            if (currentVolumeDisplay) {
+                document.querySelectorAll(".volume-btn").forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        const vol = Number(btn.dataset.volume);
+                        setVolume(vol);
+                    });
+                });
             }
-            let newVolume = Math.min(100, currentVolume + 10);
-            await api.setVolume(newVolume);
-            await fetchAndUpdateStatus(); // Re-fetch status to update volume display
+
+            // --- Initial Load & Polling ---
+            async function fetchAndUpdateStatus() {
+                try {
+                    const status = await api.getStatus();
+                    updateStatusUI(status);
+                    // Also fetch and update volume status
+                    const volumeStatus = await api.getVolume();
+                    updateVolumeDisplay(volumeStatus.volume); // Assuming API returns { volume: X }
+                } catch (error) {
+                    console.error("Failed to fetch status:", error);
+                    btStatusText.textContent = "Error: Could not contact server.";
+                    updateVolumeDisplay(null); // Clear volume display on error
+                }
+            }
+
+            async function initialize() {
+                const stations = await api.getStations();
+                renderStations(stations);
+                await fetchAndUpdateStatus();
+                setInterval(fetchAndUpdateStatus, 5000);
+            }
+
+            initialize();
         });
-    }
-
-    // --- Initial Load & Polling ---
-    async function fetchAndUpdateStatus() {
-        try {
-            const status = await api.getStatus();
-            updateStatusUI(status);
-            // Also fetch and update volume status
-            const volumeStatus = await api.getVolume();
-            updateVolumeDisplay(volumeStatus.volume); // Assuming API returns { volume: X }
-        } catch (error) {
-            console.error("Failed to fetch status:", error);
-            btStatusText.textContent = "Error: Could not contact server.";
-            updateVolumeDisplay(null); // Clear volume display on error
-        }
-    }
-
-    async function initialize() {
-        const stations = await api.getStations();
-        renderStations(stations);
-        await fetchAndUpdateStatus();
-        setInterval(fetchAndUpdateStatus, 30000);
-    }
-
-    initialize();
-});
-</script>
+    </script>
 
 </body>
+
 </html>
